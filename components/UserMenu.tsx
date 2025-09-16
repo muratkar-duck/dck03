@@ -1,0 +1,265 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabaseClient';
+import Link from 'next/link';
+
+export default function UserMenu() {
+  const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
+
+  // 🔔 Sayaçlar
+  const [notifCount, setNotifCount] = useState<number>(0); // Bildirim sayacı
+  const [chatCount, setChatCount] = useState<number>(0); // Sohbet (accepted başvuru) sayacı
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data?.user || null);
+    };
+    getUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(() => {
+      getUser();
+      // auth değiştiğinde sayaçları sıfırla; tekrar yüklenir
+      setNotifCount(0);
+      setChatCount(0);
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Sayaçları role’e göre yükle
+  useEffect(() => {
+    const loadCounts = async () => {
+      if (!user) return;
+
+      const role: 'writer' | 'producer' | undefined = user?.user_metadata?.role;
+
+      try {
+        if (role === 'producer') {
+          // Bildirim: Bu yapımcının ilanlarına gelen PENDING başvuru sayısı
+          {
+            const { count } = await supabase
+              .from('applications')
+              .select('*', { count: 'exact', head: true })
+              .eq('producer_id', user.id)
+              .eq('status', 'pending');
+            setNotifCount(count ?? 0);
+          }
+
+          // Sohbet: accepted başvurular (şimdilik = sohbetler)
+          {
+            const { count } = await supabase
+              .from('applications')
+              .select('*', { count: 'exact', head: true })
+              .eq('producer_id', user.id)
+              .eq('status', 'accepted');
+            setChatCount(count ?? 0);
+          }
+        } else if (role === 'writer') {
+          // Bildirim: bu yazarın BAŞVURULARI (accepted/rejected) → eylem gerektiren
+          {
+            const { count } = await supabase
+              .from('applications')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .in('status', ['accepted', 'rejected']);
+            setNotifCount(count ?? 0);
+          }
+
+          // Sohbet: accepted başvurular (şimdilik = sohbetler)
+          {
+            const { count } = await supabase
+              .from('applications')
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', user.id)
+              .eq('status', 'accepted');
+            setChatCount(count ?? 0);
+          }
+        } else {
+          setNotifCount(0);
+          setChatCount(0);
+        }
+      } catch {
+        // sessiz geç
+      }
+    };
+
+    loadCounts();
+  }, [user]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    router.push('/');
+  };
+
+  // Buton boyutu: yükseklik = 40px (x), genişlik = 120px (2x)
+  const fixedBtnBase =
+    'h-[40px] rounded-lg text-sm font-bold flex items-center justify-center overflow-hidden';
+  const loginBtnClass = `${fixedBtnBase} w-[120px] px-4 bg-[#ffaa06] text-[#0e5b4a] hover:bg-[#ffb733]`;
+  const registerBtnClass = `${fixedBtnBase} w-[120px] px-4 bg-white text-[#0e5b4a] border border-[#ffaa06] hover:bg-[#fff3d6]`;
+  const userBtnClass = `${fixedBtnBase} w-[120px] px-3 bg-[#ffaa06] text-[#0e5b4a] hover:bg-[#ffb733]`;
+
+  const shortLabel = (email: string | null) => {
+    if (!email) return '';
+    const local = email.split('@')[0] || email;
+    if (local.length <= 12) return local;
+    return local.slice(0, 10) + '…';
+  };
+
+  // Oturum yoksa => Giriş / Kayıt
+  if (!user) {
+    return (
+      <div className="flex items-center space-x-2 w-[260px] justify-end">
+        <Link href="/auth/sign-in" className={loginBtnClass}>
+          Giriş Yap
+        </Link>
+
+        {/* Kayıt Açılır Menüsü */}
+        <div className="relative">
+          <button
+            onClick={() => setRegisterOpen((s) => !s)}
+            className={registerBtnClass}
+            aria-expanded={registerOpen}
+            aria-haspopup="menu"
+          >
+            Kayıt Ol ⌄
+          </button>
+
+          {registerOpen && (
+            <div
+              className="absolute right-0 mt-2 w-[200px] bg-white shadow-lg rounded-lg border z-50"
+              role="menu"
+            >
+              <Link
+                href="/auth/sign-up-writer"
+                className="block px-4 py-2 hover:bg-gray-100"
+                role="menuitem"
+                onClick={() => setRegisterOpen(false)}
+              >
+                ✍️ Senarist olarak kayıt ol
+              </Link>
+              <Link
+                href="/auth/sign-up-producer"
+                className="block px-4 py-2 hover:bg-gray-100"
+                role="menuitem"
+                onClick={() => setRegisterOpen(false)}
+              >
+                🎬 Yapımcı olarak kayıt ol
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Oturum varsa => kullanıcı açılır menüsü
+  const displayLabel = shortLabel(user.email || '');
+  const role: 'writer' | 'producer' | undefined = user?.user_metadata?.role;
+
+  const goDashboard = () => {
+    if (role === 'writer') router.push('/dashboard/writer');
+    else if (role === 'producer') router.push('/dashboard/producer');
+    else router.push('/dashboard');
+  };
+
+  const goMessages = () => {
+    if (role === 'writer') router.push('/dashboard/writer/messages');
+    else if (role === 'producer') router.push('/dashboard/producer/messages');
+    else router.push('/dashboard/messages');
+  };
+
+  const goNotifications = () => {
+    if (role === 'writer') router.push('/dashboard/writer/notifications');
+    else if (role === 'producer')
+      router.push('/dashboard/producer/notifications');
+    else router.push('/dashboard/notifications');
+  };
+
+  // küçük badge
+  const Badge = ({ count }: { count: number }) =>
+    count > 0 ? (
+      <span className="ml-2 inline-flex min-w-[18px] h-[18px] items-center justify-center rounded-full text-[11px] px-1.5 bg-[#ff3b30] text-white">
+        {count > 99 ? '99+' : count}
+      </span>
+    ) : null;
+
+  return (
+    <div className="relative inline-block text-right w-[260px]">
+      <button
+        onClick={() => setMenuOpen((v) => !v)}
+        className={userBtnClass}
+        title={user.email}
+        aria-expanded={menuOpen}
+        aria-haspopup="menu"
+      >
+        <span className="truncate max-w-[88px] block">{displayLabel}</span>
+      </button>
+
+      {menuOpen && (
+        <div
+          className="absolute right-0 mt-2 w-[240px] bg-white shadow-lg rounded-lg border z-50"
+          role="menu"
+        >
+          <div className="px-4 py-2 border-b text-sm text-gray-600">
+            {user.email}
+          </div>
+
+          <button
+            className="flex w-full items-center justify-between px-4 py-2 hover:bg-gray-100 text-left"
+            onClick={() => {
+              goDashboard();
+              setMenuOpen(false);
+            }}
+            role="menuitem"
+          >
+            <span>📂 Dashboard</span>
+          </button>
+
+          <button
+            className="flex w-full items-center justify-between px-4 py-2 hover:bg-gray-100 text-left"
+            onClick={() => {
+              goMessages();
+              setMenuOpen(false);
+            }}
+            role="menuitem"
+          >
+            <span>💬 Sohbetler</span>
+            <Badge count={chatCount} />
+          </button>
+
+          <button
+            className="flex w-full items-center justify-between px-4 py-2 hover:bg-gray-100 text-left"
+            onClick={() => {
+              goNotifications();
+              setMenuOpen(false);
+            }}
+            role="menuitem"
+          >
+            <span>🔔 Bildirimler</span>
+            <Badge count={notifCount} />
+          </button>
+
+          <button
+            className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
+            onClick={() => {
+              setMenuOpen(false);
+              handleSignOut();
+            }}
+            role="menuitem"
+          >
+            🚪 Çıkış Yap
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
