@@ -10,6 +10,7 @@
    ```
 
    Populate `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from your Supabase project's **Settings → API** page.
+   Add `SUPABASE_SERVICE_ROLE_KEY` to the same file so the seed script can create auth users (keep this key private).
 3. Start the development server:
 
    ```bash
@@ -19,6 +20,46 @@
    The app runs at [http://localhost:3000](http://localhost:3000).
 
 > **Note:** This MVP ships with limited users and content. Demo data may be reset without notice.
+
+## MVP Seed Data
+
+Seed users, scripts, listings, orders, and a sample conversation in one command:
+
+```bash
+npm run seed:mvp
+```
+
+The script reads credentials from `.env`/`.env.local` and provisions:
+
+- **Writer** `writer@ducktylo.test` / `password` with two scripts
+  - `Göbeklitepe Günlükleri` — available for purchase
+  - `Sahildeki Düşler` — already sold once to surface dashboard stats
+- **Producer** `producer@ducktylo.test` / `password` with two listings
+  - `Festival İçin Duygusal Uzun Metraj Aranıyor` — includes an accepted application, an order, and an open conversation
+  - `Belgesel Ortak Yapım İlanı` — no applications so you can test the apply flow yourself
+
+## Demo Flow (Browse → Buy → Dashboard → Apply → Messages)
+
+Use the seeded accounts above to walk through the core experience:
+
+1. **Browse & Buy** (producer)
+   - Sign in as `producer@ducktylo.test`.
+   - Open **Dashboard → Yapımcı → Browse** and review the scripts.
+   - `Göbeklitepe Günlükleri` is unsold—open it and click **Satın Al** to create a fresh order.
+   - `Sahildeki Düşler` already shows **Satın Alındı** so you can see the purchased state.
+2. **Producer dashboards**
+   - Check **Dashboard → Yapımcı** and **Dashboard → Yapımcı → Satın Almalar** to confirm the newly created order plus the pre-seeded sale.
+3. **Writer dashboards**
+   - Sign in as `writer@ducktylo.test` (a second browser tab works best).
+   - Visit **Dashboard → Senarist** to see total sales/revenue populated by the seeded order.
+   - Inspect **Dashboard → Senarist → Senaryolarım** to confirm both scripts exist.
+4. **Apply to an open listing** (writer)
+   - Navigate to **Dashboard → Senarist → İlanlar** and open `Belgesel Ortak Yapım İlanı`.
+   - Select `Göbeklitepe Günlükleri` and submit the application; it should appear as **pending** for the writer and as a new notification for the producer.
+5. **Messages**
+   - The accepted application on `Sahildeki Düşler` already has a conversation with demo messages.
+   - As the writer, open **Dashboard → Senarist → Mesajlar** to read or send a follow-up.
+   - Switch to the producer and open **Dashboard → Yapımcı → Mesajlar** to see the same thread from the other side.
 
 ## Flow
 
