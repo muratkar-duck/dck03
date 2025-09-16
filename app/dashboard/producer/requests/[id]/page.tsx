@@ -24,7 +24,8 @@ type Application = {
     id: string;
     title: string;
     genre: string;
-    length: string;
+    length: number | null;
+    price_cents: number | null;
   } | null;
   writer: {
     id: string;
@@ -66,7 +67,7 @@ export default function ProducerRequestDetailPage() {
         `
         id,
         status,
-        script:scripts ( id, title, genre, length ),
+        script:scripts ( id, title, genre, length, price_cents ),
         writer:users ( id, email )
       `
       )
@@ -74,12 +75,33 @@ export default function ProducerRequestDetailPage() {
 
     if (!error && data) {
       // Supabase ilişkiler array döndürebilir → tek elemana indir
-      const cleaned = (data as any[]).map((row) => ({
-        id: row.id,
-        status: row.status,
-        script: row.script?.[0] || null,
-        writer: row.writer?.[0] || null,
-      })) as Application[];
+      const cleaned = (data as any[]).map((row) => {
+        const script = row.script?.[0] || null;
+
+        return {
+          id: row.id,
+          status: row.status,
+          script:
+            script !== null
+              ? {
+                  ...script,
+                  length:
+                    typeof script.length === 'number'
+                      ? script.length
+                      : script.length != null
+                      ? Number(script.length)
+                      : null,
+                  price_cents:
+                    typeof script.price_cents === 'number'
+                      ? script.price_cents
+                      : script.price_cents != null
+                      ? Number(script.price_cents)
+                      : null,
+                }
+              : null,
+          writer: row.writer?.[0] || null,
+        };
+      }) as Application[];
 
       setApplications(cleaned);
     }
@@ -123,6 +145,17 @@ export default function ProducerRequestDetailPage() {
         Beklemede
       </span>
     );
+  };
+
+  const formatPrice = (priceCents: number | null | undefined) => {
+    if (priceCents == null) {
+      return '—';
+    }
+
+    return (priceCents / 100).toLocaleString('tr-TR', {
+      style: 'currency',
+      currency: 'TRY',
+    });
   };
 
   if (loading) {
@@ -171,7 +204,8 @@ export default function ProducerRequestDetailPage() {
                   <p className="text-sm text-gray-600">
                     Yazar: {app.writer?.email || 'Bilinmiyor'} · Tür:{' '}
                     {app.script?.genre || '—'} · Süre:{' '}
-                    {app.script?.length || '—'}
+                    {app.script?.length ?? '—'} · Fiyat:{' '}
+                    {formatPrice(app.script?.price_cents)}
                   </p>
                   <p className="text-xs text-gray-400 flex items-center gap-2">
                     Durum: {getBadge(app.status)}
