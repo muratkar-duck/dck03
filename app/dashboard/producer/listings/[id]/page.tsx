@@ -192,13 +192,29 @@ export default function ProducerListingDetailPage() {
     if (updateError) {
       console.error(updateError);
       alert('❌ Güncelleme hatası: ' + updateError.message);
-    } else {
-      setApplications((prev) =>
-        prev.map((app) =>
-          app.id === applicationId ? { ...app, status: decision } : app
-        )
-      );
+      setUpdatingId(null);
+      return;
     }
+
+    if (decision === 'accepted') {
+      const { error: upsertError } = await supabase
+        .from('conversations')
+        .upsert(
+          { application_id: applicationId },
+          { onConflict: 'application_id' }
+        );
+
+      if (upsertError) {
+        console.error(upsertError);
+        alert('❌ Sohbet başlatma hatası: ' + upsertError.message);
+      }
+    }
+
+    setApplications((prev) =>
+      prev.map((app) =>
+        app.id === applicationId ? { ...app, status: decision } : app
+      )
+    );
 
     setUpdatingId(null);
   };
