@@ -68,7 +68,7 @@ export default function UserMenu() {
             const { count } = await supabase
               .from('applications')
               .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id)
+              .eq('owner_id', user.id)
               .in('status', ['accepted', 'rejected']);
             setNotifCount(count ?? 0);
           }
@@ -78,7 +78,7 @@ export default function UserMenu() {
             const { count } = await supabase
               .from('applications')
               .select('*', { count: 'exact', head: true })
-              .eq('user_id', user.id)
+              .eq('owner_id', user.id)
               .eq('status', 'accepted');
             setChatCount(count ?? 0);
           }

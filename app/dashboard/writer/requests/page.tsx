@@ -67,7 +67,7 @@ export default function WriterRequestsPage() {
     const { data: scrData } = await supabase
       .from('scripts')
       .select('*')
-      .eq('user_id', user.id);
+      .eq('owner_id', user.id);
 
     // Veriyi düzenle
     const formattedRequests = (reqData || []).map((req: any) => ({

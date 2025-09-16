@@ -37,7 +37,7 @@ export default function WriterMessagesListPage() {
         producer:users ( id, email )
       `
       )
-      .eq('user_id', me.id)
+      .eq('owner_id', me.id)
       .eq('status', 'accepted')
       .order('created_at', { ascending: false });
 

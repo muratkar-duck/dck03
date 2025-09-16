@@ -41,7 +41,7 @@ export default function WriterNotificationsPage() {
         producer:users ( id, email )
       `
       )
-      .eq('user_id', user.id)
+      .eq('owner_id', user.id)
       .in('status', ['accepted', 'rejected'])
       .order('created_at', { ascending: false });
 
