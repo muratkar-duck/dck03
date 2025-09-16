@@ -28,8 +28,8 @@ export default function RootLayout({
                 alt="ducktylo logo"
                 width={128}
                 height={64}
-                className="h-16 -mt-2 w-auto object-contain"
                 priority
+                className="h-16 -mt-2 w-auto object-contain"
               />
             </Link>
 

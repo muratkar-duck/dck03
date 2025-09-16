@@ -22,31 +22,30 @@ export default function ScriptDetailPage() {
 
   const [script, setScript] = useState<Script | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const fetchScript = useCallback(async () => {
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    const { data, error } = await supabase
-      .from('scripts')
-      .select(
-        'id, title, genre, length, synopsis, description, price_cents, owner_id, created_at'
-      )
-      .eq('id', id)
-      .single();
-
-    if (error) {
-      console.error('❌ Veri alınamadı:', error.message);
-    } else {
-      setScript(data);
-    }
-    setLoading(false);
-  }, [id]);
-
   useEffect(() => {
-    fetchScript();
-  }, [fetchScript]);
+    const load = async () => {
+      if (!id || typeof id !== 'string') {
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('scripts')
+        .select(
+          'id, title, genre, length, synopsis, description, price_cents, owner_id, created_at'
+        )
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        console.error('❌ Veri alınamadı:', error.message);
+      } else {
+        setScript(data);
+      }
+      setLoading(false);
+    };
+
+    load();
+  }, [id]);
 
   if (loading) return <p className="text-sm text-gray-500">Yükleniyor...</p>;
   if (!script)

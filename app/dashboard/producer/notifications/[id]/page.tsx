@@ -19,33 +19,31 @@ export default function ProducerNotificationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [row, setRow] = useState<Row | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    const { data, error } = await supabase
-      .from('applications')
-      .select(
-        `
+  useEffect(() => {
+    const load = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('applications')
+        .select(
+          `
         id, created_at, status,
         script:scripts ( id, title ),
         request:requests ( id, title ),
         writer:users ( id, email )
       `
-      )
-      .eq('id', id)
-      .maybeSingle();
+        )
+        .eq('id', id)
+        .maybeSingle();
 
-    if (!error) setRow(data as Row);
-    setLoading(false);
-  }, [id]);
+      if (!error) setRow(data as Row);
+      setLoading(false);
+    };
 
-  useEffect(() => {
     load();
-  }, [load]);
-
+  }, [id]);
   const getBadge = (status: string) => {
     if (status === 'accepted')
       return (
