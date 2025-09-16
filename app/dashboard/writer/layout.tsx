@@ -28,6 +28,12 @@ export default function WriterDashboardLayout({
             ✍️ Senaryolarım
           </Link>
           <Link
+            href="/dashboard/writer/listings"
+            className="block hover:underline"
+          >
+            🎬 İlanlar
+          </Link>
+          <Link
             href="/dashboard/writer/requests"
             className="block hover:underline"
           >
