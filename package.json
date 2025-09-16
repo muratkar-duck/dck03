@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint --no-inline-config --max-warnings=0",
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.53.0",
