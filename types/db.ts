@@ -49,12 +49,11 @@ export interface Request {
 
 export interface Application {
   id: string;
-  request_id: string;
+  listing_id: string;
+  writer_id: string;
   script_id: string;
-  user_id: string; // başvuruyu yapan (writer)
-  producer_id: string | null; // ilan sahibi (producer)
-  status: ApplicationStatus | string;
-  created_at: string; // ISO
+  status: ApplicationStatus;
+  created_at: string;
 }
 
 export interface Suggestion {
