@@ -94,7 +94,7 @@ export default function WriterNotificationDetailPage() {
 
             <div className="flex gap-2 pt-2">
               <Link
-                href={`/dashboard/writer/messages/${row.id}`}
+                href={`/dashboard/writer/messages?application=${row.id}`}
                 className="btn btn-primary"
               >
                 💬 Sohbeti Aç
