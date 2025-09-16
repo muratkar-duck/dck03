@@ -20,6 +20,19 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
 
+## Environment Variables
+
+Copy the example environment file to a local version before running the app:
+
+```bash
+cp .env.example .env.local
+```
+
+Next.js will automatically load variables from `.env.local`. Update the following Supabase variables with the values from your Supabase project (Settings → API):
+
+- `NEXT_PUBLIC_SUPABASE_URL` – the unique Supabase project URL used by the client to connect to your backend.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` – the public (anon) API key that authorizes the client to call your Supabase project.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
