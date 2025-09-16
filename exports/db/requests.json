@@ -1,0 +1,32 @@
+{
+  "schema": "public",
+  "table": "requests",
+  "rowEstimate": null,
+  "rowCount": 2,
+  "rows": [
+    {
+      "id": "9688f8e6-8d86-4a6f-b79f-1bfc73f7a616",
+      "title": "mesajları denemek için senaryo talebi",
+      "genre": "Gerilim",
+      "length": null,
+      "description": "acaba çalışıyor mu?",
+      "user_id": null,
+      "created_at": "2025-09-12T09:14:27.143829+00:00",
+      "budget": 10000000,
+      "deadline": "2025-10-05",
+      "producer_id": "a37ee6f2-2263-42c9-93cc-88e9a17669d2"
+    },
+    {
+      "id": "59693266-d387-47a0-a822-68ee9fd3ff31",
+      "title": "mesaj sistemini deniyoruz v2",
+      "genre": "Komedi",
+      "length": null,
+      "description": "mesaj sistemi v2",
+      "user_id": null,
+      "created_at": "2025-09-12T09:50:03.684659+00:00",
+      "budget": 1,
+      "deadline": "2025-10-01",
+      "producer_id": "a37ee6f2-2263-42c9-93cc-88e9a17669d2"
+    }
+  ]
+}
