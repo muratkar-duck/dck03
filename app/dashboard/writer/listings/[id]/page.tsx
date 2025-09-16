@@ -72,7 +72,7 @@ export default function ListingDetailPage() {
 
       const { data: scriptData, error: scriptError } = await supabase
         .from('scripts')
-        .select('id, title')
+        .select('id, title, genre, length, price_cents, created_at')
         .eq('owner_id', user.id);
 
       if (scriptError) {
@@ -92,7 +92,7 @@ export default function ListingDetailPage() {
 
       const { data: appData, error: appError } = await supabase
         .from('applications')
-        .select('id, script_id, status')
+        .select('id, listing_id, writer_id, script_id, status, created_at')
         .eq('listing_id', id)
         .eq('writer_id', user.id)
         .maybeSingle();
@@ -149,7 +149,7 @@ export default function ListingDetailPage() {
         script_id: selectedScript,
         status: 'pending',
       })
-      .select('id, script_id, status')
+      .select('id, listing_id, writer_id, script_id, status, created_at')
       .single();
 
     if (error) {

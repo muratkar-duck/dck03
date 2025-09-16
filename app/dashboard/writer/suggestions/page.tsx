@@ -38,22 +38,34 @@ export default function WriterSuggestionHistoryPage() {
       .from('applications')
       .select(
         `
-        id,
-        status,
-        created_at,
-        requests!inner (
           id,
-          title
-        ),
-        scripts!inner (
-          title
-        ),
-        producer:users!applications_producer_id_fkey (
-          email
-        )
-      `
+          request_id,
+          listing_id,
+          writer_id,
+          script_id,
+          status,
+          created_at,
+          requests!inner (
+            id,
+            title,
+            genre,
+            length,
+            created_at
+          ),
+          scripts!inner (
+            id,
+            title,
+            genre,
+            length,
+            price_cents,
+            created_at
+          ),
+          producer:users!applications_producer_id_fkey (
+            email
+          )
+        `
       )
-      .eq('owner_id', user.id)
+      .eq('writer_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {

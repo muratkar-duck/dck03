@@ -83,12 +83,16 @@ export default function ProducerDashboardPage() {
         const [ordersResponse, listingsResponse] = await Promise.all([
           supabase
             .from('orders')
-            .select('id, amount_cents, created_at, scripts!inner(title)')
+            .select(
+              'id, script_id, buyer_id, amount_cents, created_at, scripts!inner(id, title, price_cents, created_at)'
+            )
             .eq('buyer_id', userId)
             .order('created_at', { ascending: false }),
           supabase
             .from('producer_listings')
-            .select('id, title, applications(status)')
+            .select(
+              'id, title, genre, budget_cents, created_at, applications(status)'
+            )
             .eq('owner_id', userId)
             .order('created_at', { ascending: false }),
         ]);

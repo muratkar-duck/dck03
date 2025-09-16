@@ -29,11 +29,16 @@ export default function WriterNotificationDetailPage() {
         .from('applications')
         .select(
           `
-        id, created_at, status,
-        script:scripts ( id, title ),
-        request:requests ( id, title ),
-        producer:users ( id, email )
-      `
+            id,
+            listing_id,
+            writer_id,
+            script_id,
+            status,
+            created_at,
+            script:scripts ( id, title, genre, length, price_cents, created_at ),
+            request:requests ( id, title, genre, length, created_at ),
+            producer:users ( id, email )
+          `
         )
         .eq('id', id)
         .maybeSingle();

@@ -25,7 +25,7 @@ export default function BrowseListingsPage() {
       setError(null);
       const { data, error } = await supabase
         .from('producer_listings')
-        .select('id, title, genre, description, budget_cents')
+        .select('id, title, genre, description, budget_cents, created_at')
         .order('created_at', { ascending: false });
       if (error) {
         setError(error.message);

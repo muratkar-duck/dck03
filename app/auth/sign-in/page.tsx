@@ -38,7 +38,7 @@ export default function SignInPage() {
     // users.role oku
     const { data: profile } = await supabase
       .from('users')
-      .select('role')
+      .select('id, email, role')
       .eq('id', user.id)
       .maybeSingle();
 
