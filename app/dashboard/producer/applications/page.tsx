@@ -13,7 +13,8 @@ type ApplicationRow = {
   script_id: string;
   script_title: string;
   script_genre: string;
-  script_length: string | null;
+  length: number | null;
+  price_cents: number | null;
 };
 
 export default function ProducerApplicationsPage() {
@@ -43,7 +44,7 @@ export default function ProducerApplicationsPage() {
         request_id,
         script_id,
         requests!inner(id, title),
-        scripts!inner(id, title, genre, length)
+        scripts!inner(id, title, genre, length, price_cents)
       `)
       .eq('producer_id', user.id)
       .order('created_at', { ascending: false });
@@ -62,12 +63,34 @@ export default function ProducerApplicationsPage() {
         script_id: item.script_id,
         script_title: item.scripts?.title || '',
         script_genre: item.scripts?.genre || '',
-        script_length: item.scripts?.length?.toString() || null,
+        length:
+          typeof item.scripts?.length === 'number'
+            ? item.scripts.length
+            : item.scripts?.length != null
+            ? Number(item.scripts.length)
+            : null,
+        price_cents:
+          typeof item.scripts?.price_cents === 'number'
+            ? item.scripts.price_cents
+            : item.scripts?.price_cents != null
+            ? Number(item.scripts.price_cents)
+            : null,
       }));
       setApplications(formatted);
     }
 
     setLoading(false);
+  };
+
+  const formatPrice = (priceCents: number | null) => {
+    if (priceCents == null) {
+      return '—';
+    }
+
+    return (priceCents / 100).toLocaleString('tr-TR', {
+      style: 'currency',
+      currency: 'TRY',
+    });
   };
 
   const handleDecision = async (
@@ -135,7 +158,10 @@ export default function ProducerApplicationsPage() {
                     </h2>
                     <p className="text-sm text-[#7a5c36]">
                       Tür: {app.script_genre} · Süre:{' '}
-                      {app.script_length ? app.script_length : '—'}
+                      {app.length ?? '—'}
+                    </p>
+                    <p className="text-sm text-[#7a5c36]">
+                      Fiyat: {formatPrice(app.price_cents)}
                     </p>
                     <p className="text-sm text-[#7a5c36]">
                       İlan: {app.request_title}
