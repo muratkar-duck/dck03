@@ -110,19 +110,41 @@ export default function ProducerApplicationsPage() {
     applicationId: string,
     decision: 'accepted' | 'rejected'
   ) => {
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from('applications')
       .update({ status: decision })
       .eq('id', applicationId);
 
-    if (error) {
-      alert('❌ Güncelleme hatası: ' + error.message);
+    if (updateError) {
+      alert('❌ Güncelleme hatası: ' + updateError.message);
+      return;
+    }
+
+    let conversationError: string | null = null;
+
+    if (decision === 'accepted') {
+      const { error: upsertError } = await supabase
+        .from('conversations')
+        .upsert(
+          { application_id: applicationId },
+          { onConflict: 'application_id' }
+        );
+
+      if (upsertError) {
+        console.error(upsertError);
+        conversationError = upsertError.message;
+      }
+    }
+
+    if (conversationError) {
+      alert(`⚠️ Başvuru kabul edildi ancak sohbet açılamadı: ${conversationError}`);
     } else {
       alert(
         `✅ Başvuru ${decision === 'accepted' ? 'kabul edildi' : 'reddedildi'}`
       );
-      fetchApplications(); // Listeyi yenile
     }
+
+    fetchApplications(); // Listeyi yenile
   };
 
   const getBadge = (status: string) => {

@@ -111,20 +111,35 @@ export default function ProducerRequestDetailPage() {
     applicationId: string,
     decision: 'accepted' | 'rejected'
   ) => {
-    const { error } = await supabase
+    const { error: updateError } = await supabase
       .from('applications')
       .update({ status: decision })
       .eq('id', applicationId);
 
-    if (error) {
-      alert('❌ Güncelleme hatası: ' + error.message);
-    } else {
-      setApplications((prev) =>
-        prev.map((app) =>
-          app.id === applicationId ? { ...app, status: decision } : app
-        )
-      );
+    if (updateError) {
+      alert('❌ Güncelleme hatası: ' + updateError.message);
+      return;
     }
+
+    if (decision === 'accepted') {
+      const { error: upsertError } = await supabase
+        .from('conversations')
+        .upsert(
+          { application_id: applicationId },
+          { onConflict: 'application_id' }
+        );
+
+      if (upsertError) {
+        console.error(upsertError);
+        alert('❌ Sohbet başlatma hatası: ' + upsertError.message);
+      }
+    }
+
+    setApplications((prev) =>
+      prev.map((app) =>
+        app.id === applicationId ? { ...app, status: decision } : app
+      )
+    );
   };
 
   const getBadge = (status: string) => {
