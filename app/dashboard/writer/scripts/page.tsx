@@ -49,7 +49,7 @@ export default function MyScriptsPage() {
     const { data, error } = await supabase
       .from('scripts')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -84,7 +84,7 @@ export default function MyScriptsPage() {
       .from('scripts')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id);
+      .eq('owner_id', user.id);
 
     if (error) {
       alert('Silme başarısız: ' + error.message);

@@ -11,6 +11,7 @@ type Script = {
   length: number | null; // dakika varsayımı
   synopsis: string | null;
   created_at: string;
+  price_cents: number | null;
 };
 
 export default function BrowseScriptsPage() {
@@ -29,7 +30,7 @@ export default function BrowseScriptsPage() {
     try {
       const { data, error } = await supabase
         .from('scripts')
-        .select('id, title, genre, length, synopsis, created_at')
+        .select('id, title, genre, length, synopsis, created_at, price_cents')
         .order('created_at', { ascending: false });
         
       if (error) throw error;
@@ -81,6 +82,15 @@ export default function BrowseScriptsPage() {
   const formatMinutes = (m: number | null) => {
     if (m == null) return '-';
     return `${m} dk`;
+  };
+
+  const formatPrice = (price: number | null) => {
+    if (price == null) return 'Belirtilmemiş';
+    return new Intl.NumberFormat('tr-TR', {
+      style: 'currency',
+      currency: 'TRY',
+      maximumFractionDigits: 2,
+    }).format(price / 100);
   };
 
   const excerpt = (text: string | null, max = 180) => {
@@ -168,7 +178,8 @@ export default function BrowseScriptsPage() {
             <div className="card space-y-2" key={s.id}>
               <h2 className="text-lg font-semibold">{s.title}</h2>
               <p className="text-sm text-[#7a5c36]">
-                Tür: {s.genre || '-'} &middot; Süre: {formatMinutes(s.length)}
+                Tür: {s.genre || '-'} · Süre: {formatMinutes(s.length)} · Fiyat:{' '}
+                {formatPrice(s.price_cents)}
               </p>
               <p className="text-sm text-[#4a3d2f]">{excerpt(s.synopsis)}</p>
               <div className="flex gap-2 mt-2">

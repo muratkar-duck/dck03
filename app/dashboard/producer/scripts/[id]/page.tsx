@@ -12,7 +12,9 @@ type Script = {
   length: string | number | null;
   synopsis: string | null;
   created_at: string;
-  user_id: string;
+  owner_id: string;
+  description: string | null;
+  price_cents: number | null;
   // Not: Şu an veri modelinizde dosya yolu alanı yok.
   // İleride storage kullanırsak ör. file_path veya pdf_url ekleyebiliriz.
 };
@@ -32,6 +34,15 @@ export default function ProducerScriptDetailPage() {
       month: '2-digit',
       day: '2-digit',
     }).format(new Date(iso));
+
+  const formatPrice = (price: number | null) => {
+    if (price == null) return 'Belirtilmemiş';
+    return new Intl.NumberFormat('tr-TR', {
+      style: 'currency',
+      currency: 'TRY',
+      maximumFractionDigits: 2,
+    }).format(price / 100);
+  };
 
   const fetchAll = useCallback(async (scriptId: string) => {
     try {
@@ -66,7 +77,9 @@ export default function ProducerScriptDetailPage() {
       // 3) Script detayını çek
       const { data: scData, error: scErr } = await supabase
         .from('scripts')
-        .select('id, title, genre, length, synopsis, created_at, user_id')
+        .select(
+          'id, title, genre, length, synopsis, description, price_cents, created_at, owner_id'
+        )
         .eq('id', scriptId)
         .single();
 
@@ -117,7 +130,8 @@ export default function ProducerScriptDetailPage() {
           <div>
             <h1 className="text-2xl font-bold">{script.title}</h1>
             <p className="text-sm text-gray-600">
-              Tür: {script.genre || '—'} · Süre: {script.length ?? '—'}
+              Tür: {script.genre || '—'} · Süre: {script.length ?? '—'} · Fiyat:{' '}
+              {formatPrice(script.price_cents)}
             </p>
             <p className="text-xs text-gray-400">
               Oluşturulma: {fmtDate(script.created_at)}
@@ -152,6 +166,13 @@ export default function ProducerScriptDetailPage() {
               <h2 className="text-lg font-semibold mb-2">Senaryonun Özeti</h2>
               <p className="text-[#4a3d2f] whitespace-pre-wrap">
                 {script.synopsis || 'Özet bulunamadı.'}
+              </p>
+            </div>
+
+            <div className="rounded-lg border p-4 bg-white/80">
+              <h2 className="text-lg font-semibold mb-2">Senaryonun Açıklaması</h2>
+              <p className="text-[#4a3d2f] whitespace-pre-wrap">
+                {script.description || 'Açıklama bulunamadı.'}
               </p>
             </div>
 
