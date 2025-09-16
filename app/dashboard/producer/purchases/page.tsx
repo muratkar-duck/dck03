@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient';
 
 type OrderRow = {
   id: string;
+  buyer_id: string;
   created_at: string;
   amount_cents: number | null;
   script_title: string;
@@ -51,8 +52,10 @@ export default function ProducerPurchasesPage() {
 
     const { data, error } = await supabase
       .from('orders')
-      .select('id, amount_cents, created_at, scripts!inner(id,title,price_cents)')
-      .eq('producer_id', user.id)
+      .select(
+        'id, buyer_id, amount_cents, created_at, scripts!inner(id,title,price_cents)'
+      )
+      .eq('buyer_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -64,6 +67,7 @@ export default function ProducerPurchasesPage() {
 
     const formatted = (data || []).map((item: any) => ({
       id: item.id,
+      buyer_id: item.buyer_id,
       created_at: item.created_at,
       amount_cents:
         typeof item.amount_cents === 'number'
