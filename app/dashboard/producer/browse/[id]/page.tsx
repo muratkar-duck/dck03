@@ -50,10 +50,25 @@ export default function ScriptDetailPage() {
         <h2 className="text-lg font-semibold">Senaryo Açıklaması</h2>
         <p className="text-[#4a3d2f]">{script.description}</p>
 
-        <div className="pt-6">
-          <button className="btn btn-secondary" onClick={() => router.back()}>
-            Geri Dön
-          </button>
+        <div className="pt-6 space-y-3">
+          {purchaseMessage && (
+            <p className="text-sm text-green-600">{purchaseMessage}</p>
+          )}
+          {purchaseError && (
+            <p className="text-sm text-red-600">{purchaseError}</p>
+          )}
+          <div className="flex gap-3">
+            <button
+              className="btn btn-primary"
+              onClick={handlePurchase}
+              disabled={isPurchasing || hasPurchased}
+            >
+              {hasPurchased ? 'Satın Alındı' : 'Satın Al'}
+            </button>
+            <button className="btn btn-secondary" onClick={() => router.back()}>
+              Geri Dön
+            </button>
+          </div>
         </div>
       </div>
     </div>

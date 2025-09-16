@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -17,12 +17,11 @@ type Script = {
 };
 
 export default function ScriptDetailPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
   const [script, setScript] = useState<Script | null>(null);
   const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     const load = async () => {
       if (!id || typeof id !== 'string') {
