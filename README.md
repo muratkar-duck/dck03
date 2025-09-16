@@ -1,49 +1,40 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# MVP Prototype
 
-## Getting Started
+## Setup
 
-First, run the development server:
+1. Install dependencies with `npm install`.
+2. Copy the example environment file and fill in your Supabase keys:
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun run dev
-```
+   ```bash
+   cp .env.example .env.local
+   ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+   Populate `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` from your Supabase project's **Settings → API** page.
+3. Start the development server:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+   ```bash
+   npm run dev
+   ```
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+   The app runs at [http://localhost:3000](http://localhost:3000).
 
-## Environment Variables
+> **Note:** This MVP ships with limited users and content. Demo data may be reset without notice.
 
-Copy the example environment file to a local version before running the app:
+## Flow
 
-```bash
-cp .env.example .env.local
-```
+1. Writer adds a scenario.
+2. Producer posts a job listing.
+3. Producer purchases a scenario from **Browse**.
+4. Writer applies to the job.
+5. Both parties continue the conversation in **Messages**.
 
-Next.js will automatically load variables from `.env.local`. Update the following Supabase variables with the values from your Supabase project (Settings → API):
+## Smoke Test
 
-- `NEXT_PUBLIC_SUPABASE_URL` – the unique Supabase project URL used by the client to connect to your backend.
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` – the public (anon) API key that authorizes the client to call your Supabase project.
+After starting the dev server, run through this quick check:
 
-## Learn More
+1. Sign up as a **Writer** and add a scenario.
+2. In a separate session, sign up as a **Producer** and create a job listing.
+3. As the producer, visit **Browse** and purchase the writer's scenario.
+4. Switch back to the writer and apply for the posted job.
+5. Confirm a new thread appears under **Messages** for both accounts.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
