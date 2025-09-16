@@ -11,23 +11,28 @@ export default function ScriptDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchScript();
-  }, []);
+    const load = async () => {
+      if (!id || typeof id !== 'string') {
+        setLoading(false);
+        return;
+      }
 
-  const fetchScript = async () => {
-    const { data, error } = await supabase
-      .from('scripts')
-      .select('id, title, genre, length, price_cents, description')
-      .eq('id', id)
-      .single();
+      const { data, error } = await supabase
+        .from('scripts')
+        .select('id, title, genre, length, price_cents, description')
+        .eq('id', id)
+        .single();
 
-    if (error) {
-      console.error('Hata:', error.message);
-    } else {
-      setScript(data);
-    }
-    setLoading(false);
-  };
+      if (error) {
+        console.error('Hata:', error.message);
+      } else {
+        setScript(data);
+      }
+      setLoading(false);
+    };
+
+    load();
+  }, [id]);
 
   if (loading) return <p className="text-sm text-gray-500">Yükleniyor...</p>;
   if (!script)

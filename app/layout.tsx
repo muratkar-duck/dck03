@@ -1,6 +1,7 @@
 import './globals.css';
 import TabTitleHandler from '../components/TabTitleHandler';
 import Link from 'next/link';
+import Image from 'next/image';
 import UserMenu from '@/components/UserMenu';
 
 export const metadata = {
@@ -22,10 +23,13 @@ export default function RootLayout({
           <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
             {/* Sol üstte logo */}
             <Link href="/" className="block h-12 w-auto overflow-visible">
-              <img
+              <Image
                 src="/ducktylo-logo.png"
                 alt="ducktylo logo"
-                className="h-16 -mt-2 object-contain"
+                width={128}
+                height={64}
+                priority
+                className="h-16 -mt-2 w-auto object-contain"
               />
             </Link>
 

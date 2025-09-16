@@ -56,6 +56,12 @@ export default function ProducerDashboardLayout({
             📩 Başvurularım
           </Link>
           <Link
+            href="/dashboard/producer/purchases"
+            className="block hover:underline"
+          >
+            🧾 Satın Alımlarım
+          </Link>
+          <Link
             href="/dashboard/producer/billing"
             className="block hover:underline"
           >

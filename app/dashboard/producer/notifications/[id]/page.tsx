@@ -21,27 +21,30 @@ export default function ProducerNotificationDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    load();
-  }, [id]);
-
-  const load = async () => {
-    if (!id) return;
-    const { data, error } = await supabase
-      .from('applications')
-      .select(
-        `
+    const load = async () => {
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('applications')
+        .select(
+          `
         id, created_at, status,
         script:scripts ( id, title ),
         request:requests ( id, title ),
         writer:users ( id, email )
       `
-      )
-      .eq('id', id)
-      .maybeSingle();
+        )
+        .eq('id', id)
+        .maybeSingle();
 
-    if (!error) setRow(data as Row);
-    setLoading(false);
-  };
+      if (!error) setRow(data as Row);
+      setLoading(false);
+    };
+
+    load();
+  }, [id]);
 
   const getBadge = (status: string) => {
     if (status === 'accepted')
