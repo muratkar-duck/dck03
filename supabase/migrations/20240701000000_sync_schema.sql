@@ -20,13 +20,10 @@ do $$
 begin
   if not exists (
     select 1
-    from information_schema.constraint_column_usage u
-    join information_schema.table_constraints tc
-      on tc.constraint_name = u.constraint_name
-    where u.table_schema = 'public'
-      and u.table_name = 'users'
-      and tc.constraint_type = 'FOREIGN KEY'
-      and u.constraint_name = 'users_auth_user_id_fkey'
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'users'
+      and tc.constraint_name = 'users_auth_user_id_fkey'
   ) then
     alter table public.users
       add constraint users_auth_user_id_fkey
@@ -56,10 +53,10 @@ do $$
 begin
   if not exists (
     select 1
-    from information_schema.constraint_column_usage u
-    where u.table_schema = 'public'
-      and u.table_name = 'scripts'
-      and u.constraint_name = 'scripts_owner_id_fkey'
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'scripts'
+      and tc.constraint_name = 'scripts_owner_id_fkey'
   ) then
     alter table public.scripts
       add constraint scripts_owner_id_fkey
@@ -90,10 +87,10 @@ do $$
 begin
   if not exists (
     select 1
-    from information_schema.constraint_column_usage u
-    where u.table_schema = 'public'
-      and u.table_name = 'producer_listings'
-      and u.constraint_name = 'producer_listings_owner_id_fkey'
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'producer_listings'
+      and tc.constraint_name = 'producer_listings_owner_id_fkey'
   ) then
     alter table public.producer_listings
       add constraint producer_listings_owner_id_fkey
@@ -127,10 +124,10 @@ do $$
 begin
   if not exists (
     select 1
-    from information_schema.constraint_column_usage u
-    where u.table_schema = 'public'
-      and u.table_name = 'requests'
-      and u.constraint_name = 'requests_producer_id_fkey'
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'requests'
+      and tc.constraint_name = 'requests_producer_id_fkey'
   ) then
     alter table public.requests
       add constraint requests_producer_id_fkey
@@ -145,10 +142,10 @@ do $$
 begin
   if not exists (
     select 1
-    from information_schema.constraint_column_usage u
-    where u.table_schema = 'public'
-      and u.table_name = 'requests'
-      and u.constraint_name = 'requests_user_id_fkey'
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'requests'
+      and tc.constraint_name = 'requests_user_id_fkey'
   ) then
     alter table public.requests
       add constraint requests_user_id_fkey
@@ -523,11 +520,14 @@ where table_schema = 'public'
   and table_name in ('users','scripts','producer_listings','requests','applications','orders','conversations','messages')
 order by table_name, ordinal_position;
 
-select constraint_name, table_name, delete_rule
-from information_schema.referential_constraints
-where constraint_schema = 'public'
-  and table_name in ('users','scripts','producer_listings','requests','applications','orders','conversations','messages')
-order by table_name, constraint_name;
+select rc.constraint_name, tc.table_name, rc.delete_rule
+from information_schema.referential_constraints rc
+join information_schema.table_constraints tc
+  on rc.constraint_schema = tc.constraint_schema
+ and rc.constraint_name = tc.constraint_name
+where rc.constraint_schema = 'public'
+  and tc.table_name in ('users','scripts','producer_listings','requests','applications','orders','conversations','messages')
+order by tc.table_name, rc.constraint_name;
 
 select tablename, indexname, indexdef
 from pg_indexes
