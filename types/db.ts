@@ -15,9 +15,11 @@ export interface Script {
   id: string;
   title: string;
   genre: string;
-  length: number | null;
-  synopsis?: string | null;
-  user_id: string; // senaryo sahibi (writer)
+  length: number;
+  synopsis: string;
+  description: string;
+  price_cents: number;
+  owner_id: string; // senaryo sahibi (writer)
   created_at: string; // ISO
 }
 
@@ -58,6 +60,11 @@ export interface Suggestion {
 export interface ApplicationWithJoins {
   id: string;
   status: ApplicationStatus | string;
-  script: Pick<Script, 'id' | 'title' | 'genre' | 'length'> | null;
+  script:
+    | Pick<
+        Script,
+        'id' | 'title' | 'genre' | 'length' | 'synopsis' | 'description' | 'price_cents' | 'owner_id'
+      >
+    | null;
   writer: Pick<User, 'id' | 'email'> | null;
 }
