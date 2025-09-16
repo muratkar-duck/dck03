@@ -38,6 +38,18 @@ export default function ProducerDashboardLayout({
             📓 Taleplerim
           </Link>
           <Link
+            href="/dashboard/producer/listings"
+            className="block hover:underline"
+          >
+            🎬 İlanlarım
+          </Link>
+          <Link
+            href="/dashboard/producer/listings/new"
+            className="block hover:underline"
+          >
+            ➕ Yeni İlan Oluştur
+          </Link>
+          <Link
             href="/dashboard/producer/applications"
             className="block hover:underline"
           >
