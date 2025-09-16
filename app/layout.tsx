@@ -1,7 +1,6 @@
 import './globals.css';
 import TabTitleHandler from '../components/TabTitleHandler';
 import Link from 'next/link';
-import Image from 'next/image';
 import UserMenu from '@/components/UserMenu';
 
 export const metadata = {
@@ -19,47 +18,23 @@ export default function RootLayout({
       <body className="min-h-screen bg-[#faf3e0] text-[#7a5c36] font-sans">
         <TabTitleHandler />
 
-        <header className="bg-[#0e5b4a] text-[#ffaa06] py-4 shadow-md">
-          <div className="max-w-7xl mx-auto px-4 flex justify-between items-center">
-            {/* Sol üstte logo */}
-            <Link href="/" className="block h-12 w-auto overflow-visible">
-              <Image
-                src="/ducktylo-logo.png"
-                alt="ducktylo logo"
-                width={128}
-                height={64}
-                priority
-                className="h-16 -mt-2 w-auto object-contain"
-              />
+        <header className="bg-forest text-brand py-4 shadow-md">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-4">
+            <Link href="/" className="text-2xl font-bold">
+              ducktylo
             </Link>
-
-            {/* Navigasyon + Sabit yerleşimli UserMenu */}
-            <div className="flex items-center space-x-4">
-              <nav className="flex items-center space-x-2 text-sm font-bold">
-                <Link href="/" className="hover:underline">
-                  Ana Sayfa
-                </Link>
-                <span className="text-white">|</span>
-                <Link href="/about" className="hover:underline">
-                  Hakkımızda
-                </Link>
-                <span className="text-white">|</span>
-                <Link href="/how-it-works" className="hover:underline">
-                  Nasıl Çalışır?
-                </Link>
-                <span className="text-white">|</span>
-                <Link href="/plans" className="hover:underline">
-                  Üyelik Planları
-                </Link>
-                <span className="text-white">|</span>
-                <Link href="/contact" className="hover:underline">
-                  İletişim
-                </Link>
-              </nav>
-
-              {/* Oturum alanı (sabit genişlik) */}
-              <UserMenu />
-            </div>
+            <nav className="flex items-center gap-4 text-sm font-semibold">
+              <Link href="/browse" className="hover:underline">
+                Browse
+              </Link>
+              <Link href="/dashboard" className="hover:underline">
+                Dashboard
+              </Link>
+              <Link href="/messages" className="hover:underline">
+                Messages
+              </Link>
+            </nav>
+            <UserMenu />
           </div>
         </header>
 
