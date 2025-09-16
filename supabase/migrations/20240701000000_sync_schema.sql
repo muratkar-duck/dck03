@@ -608,14 +608,13 @@ where table_schema = 'public'
   and table_name in ('users','scripts','producer_listings','requests','applications','orders','conversations','messages')
 order by table_name, ordinal_position;
 
-select rc.constraint_name, tc.table_name, rc.delete_rule
+select rc.constraint_name,
+       tc.table_name,
+       rc.delete_rule
 from information_schema.referential_constraints rc
 join information_schema.table_constraints tc
-  on rc.constraint_schema = tc.constraint_schema
- and rc.constraint_name = tc.constraint_name
-where rc.constraint_schema = 'public'
-  and tc.table_name in ('users','scripts','producer_listings','requests','applications','orders','conversations','messages')
-order by tc.table_name, rc.constraint_name;
+  on rc.constraint_name = tc.constraint_name
+ and rc.constraint_schema = tc.constraint_schema;
 
 select tablename, indexname, indexdef
 from pg_indexes
