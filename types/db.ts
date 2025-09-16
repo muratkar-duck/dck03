@@ -66,6 +66,14 @@ export interface Suggestion {
   created_at: string; // ISO
 }
 
+export interface Order {
+  id: string;
+  script_id: string;
+  buyer_id: string;
+  amount_cents: number;
+  created_at: string;
+}
+
 // Sayfalarda kullandığımız JOIN çıktı tipleri
 export interface ApplicationWithJoins {
   id: string;
