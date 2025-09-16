@@ -232,7 +232,7 @@ export default function ProducerRequestDetailPage() {
                   <div className="flex gap-2">
                     {/* ✅ Accepted → Sohbet */}
                     <Link
-                      href={`/dashboard/producer/messages/${app.id}`}
+                      href={`/dashboard/producer/messages?application=${app.id}`}
                       className="btn btn-primary"
                     >
                       💬 Sohbeti Aç
