@@ -56,10 +56,26 @@ export default function UserMenu() {
           {
             const { count } = await supabase
               .from('applications')
-              .select('id, listing:producer_listings!inner(owner_id)', {
-                count: 'exact',
-                head: true,
-              })
+              .select(
+                `
+                  id,
+                  listing_id,
+                  writer_id,
+                  script_id,
+                  status,
+                  created_at,
+                  listing:producer_listings!inner (
+                    id,
+                    owner_id,
+                    title,
+                    created_at
+                  )
+                `,
+                {
+                  count: 'exact',
+                  head: true,
+                }
+              )
               .eq('listing.owner_id', user.id)
               .eq('status', 'pending');
             setNotifCount(count ?? 0);
@@ -72,8 +88,21 @@ export default function UserMenu() {
               .select(
                 `
                   id,
-                  application:applications!inner(
-                    listing:producer_listings!inner(owner_id)
+                  application_id,
+                  created_at,
+                  application:applications!inner (
+                    id,
+                    listing_id,
+                    writer_id,
+                    script_id,
+                    status,
+                    created_at,
+                    listing:producer_listings!inner (
+                      id,
+                      owner_id,
+                      title,
+                      created_at
+                    )
                   )
                 `,
                 { count: 'exact', head: true }
@@ -86,7 +115,10 @@ export default function UserMenu() {
           {
             const { count } = await supabase
               .from('applications')
-              .select('*', { count: 'exact', head: true })
+              .select(
+                'id, listing_id, writer_id, script_id, status, created_at',
+                { count: 'exact', head: true }
+              )
               .eq('writer_id', user.id)
               .in('status', ['accepted', 'rejected']);
             setNotifCount(count ?? 0);
@@ -99,7 +131,16 @@ export default function UserMenu() {
               .select(
                 `
                   id,
-                  application:applications!inner(writer_id)
+                  application_id,
+                  created_at,
+                  application:applications!inner (
+                    id,
+                    listing_id,
+                    writer_id,
+                    script_id,
+                    status,
+                    created_at
+                  )
                 `,
                 { count: 'exact', head: true }
               )

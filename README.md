@@ -79,3 +79,18 @@ After starting the dev server, run through this quick check:
 4. Switch back to the writer and apply for the posted job.
 5. Confirm a new thread appears under **Messages** for both accounts.
 
+## Supabase dump utility
+
+Use `tools/dump-supabase.ts` to export the Supabase project's public data and metadata. The script prefers the service role key so it can inspect `information_schema` and `pg_catalog`, and falls back to the anon key when the service key isn't available.
+
+```bash
+# Environment variables can also be placed in .env.local
+export NEXT_PUBLIC_SUPABASE_URL="https://<your-project>.supabase.co"
+export NEXT_PUBLIC_SUPABASE_ANON_KEY="<anon-key>"
+export SUPABASE_SERVICE_ROLE_KEY="<service-role-key>" # optional but recommended
+
+npx tsx tools/dump-supabase.ts
+```
+
+The dump is written to `exports/db`. Each table becomes `<table>.json`, while `_policies.json` and `_constraints.json` hold RLS, constraint, and index metadata. Tables that cannot be read because of row-level security or missing privileges are skipped with a console warning.
+

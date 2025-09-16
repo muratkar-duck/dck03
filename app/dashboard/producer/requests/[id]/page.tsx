@@ -50,7 +50,9 @@ export default function ProducerRequestDetailPage() {
   const fetchRequest = async (requestId: string) => {
     const { data, error } = await supabase
       .from('requests')
-      .select('*')
+      .select(
+        'id, title, description, genre, length, budget, created_at, user_id, producer_id'
+      )
       .eq('id', requestId)
       .single();
 
@@ -66,6 +68,9 @@ export default function ProducerRequestDetailPage() {
       .select(
         `
         id,
+        request_id,
+        listing_id,
+        writer_id,
         status,
         script:scripts ( id, title, genre, length, price_cents ),
         writer:users ( id, email )

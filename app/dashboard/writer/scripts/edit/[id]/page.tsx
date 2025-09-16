@@ -15,18 +15,25 @@ export default function EditScriptPage() {
   const [description, setDescription] = useState('');
   const [priceCents, setPriceCents] = useState<number | ''>('');
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const fetchScript = useCallback(async () => {
     if (!id) return;
 
+    setErrorMessage(null);
     const { data, error } = await supabase
       .from('scripts')
-      .select('*')
+      .select(
+        'id, title, genre, length, synopsis, description, price_cents, owner_id, created_at'
+      )
       .eq('id', id)
       .single();
 
     if (error) {
       console.error('❌ Veri alınamadı:', error.message);
+      setErrorMessage(error.message ?? 'Senaryo bilgileri alınamadı.');
+    } else if (!data) {
+      setErrorMessage('Senaryo bulunamadı.');
     } else if (data) {
       setTitle(data.title);
       setGenre(data.genre);
@@ -65,6 +72,21 @@ export default function EditScriptPage() {
   };
 
   if (loading) return <p className="text-sm text-gray-500">Yükleniyor...</p>;
+
+  if (errorMessage) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-red-600">{errorMessage}</p>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => router.push('/dashboard/writer/scripts')}
+        >
+          Senaryolara Dön
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-2xl">

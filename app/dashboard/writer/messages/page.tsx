@@ -102,11 +102,17 @@ export default function WriterMessagesPage() {
             id,
             script:scripts(
               id,
-              title
+              title,
+              genre,
+              length,
+              price_cents,
+              created_at
             ),
             listing:producer_listings!inner(
               id,
               title,
+              genre,
+              budget_cents,
               owner:users!producer_listings_owner_id_fkey(
                 id,
                 email
@@ -209,7 +215,7 @@ export default function WriterMessagesPage() {
 
       const { data, error } = await supabase
         .from('messages')
-        .select('*')
+        .select('id, conversation_id, sender_id, body, created_at')
         .eq('conversation_id', selectedConversationId)
         .order('created_at', { ascending: true });
 

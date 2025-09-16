@@ -46,7 +46,7 @@ export default function ProducerListingsPage() {
 
       const { data, error: listingsError } = await supabase
         .from('producer_listings')
-        .select('*')
+        .select('id, title, genre, description, budget_cents, created_at, owner_id')
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
 

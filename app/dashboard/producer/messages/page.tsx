@@ -140,12 +140,19 @@ export default function ProducerMessagesPage() {
               created_at,
               script:scripts!inner (
                 id,
-                title
+                title,
+                genre,
+                length,
+                price_cents,
+                created_at
               ),
               listing:producer_listings!inner (
                 id,
                 title,
-                owner_id
+                owner_id,
+                genre,
+                budget_cents,
+                created_at
               ),
               writer:users!inner (
                 id,
@@ -300,7 +307,7 @@ export default function ProducerMessagesPage() {
       try {
         const { data, error } = await supabase
           .from('messages')
-          .select('*')
+          .select('id, conversation_id, sender_id, body, created_at')
           .eq('conversation_id', selectedConversationId)
           .order('created_at', { ascending: true });
 
