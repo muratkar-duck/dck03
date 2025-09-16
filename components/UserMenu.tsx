@@ -47,8 +47,11 @@ export default function UserMenu() {
           {
             const { count } = await supabase
               .from('applications')
-              .select('*', { count: 'exact', head: true })
-              .eq('producer_id', user.id)
+              .select('id, listing:producer_listings!inner(owner_id)', {
+                count: 'exact',
+                head: true,
+              })
+              .eq('listing.owner_id', user.id)
               .eq('status', 'pending');
             setNotifCount(count ?? 0);
           }
@@ -57,8 +60,11 @@ export default function UserMenu() {
           {
             const { count } = await supabase
               .from('applications')
-              .select('*', { count: 'exact', head: true })
-              .eq('producer_id', user.id)
+              .select('id, listing:producer_listings!inner(owner_id)', {
+                count: 'exact',
+                head: true,
+              })
+              .eq('listing.owner_id', user.id)
               .eq('status', 'accepted');
             setChatCount(count ?? 0);
           }
@@ -68,7 +74,7 @@ export default function UserMenu() {
             const { count } = await supabase
               .from('applications')
               .select('*', { count: 'exact', head: true })
-              .eq('owner_id', user.id)
+              .eq('writer_id', user.id)
               .in('status', ['accepted', 'rejected']);
             setNotifCount(count ?? 0);
           }
@@ -78,7 +84,7 @@ export default function UserMenu() {
             const { count } = await supabase
               .from('applications')
               .select('*', { count: 'exact', head: true })
-              .eq('owner_id', user.id)
+              .eq('writer_id', user.id)
               .eq('status', 'accepted');
             setChatCount(count ?? 0);
           }
