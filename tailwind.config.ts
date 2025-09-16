@@ -10,6 +10,10 @@ const config = {
       fontFamily: {
         sans: ['"IBM Plex Mono"', 'Courier', 'monospace'],
       },
+      colors: {
+        brand: '#ffaa06',
+        forest: '#0e5b4a',
+      },
     },
   },
   plugins: [],
