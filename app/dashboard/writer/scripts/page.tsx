@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -8,10 +8,25 @@ type Script = {
   id: string;
   title: string;
   genre: string;
-  length?: number;
-  synopsis?: string;
-  user_id?: string;
+  length?: number | null;
+  synopsis?: string | null;
+  owner_id?: string;
+  description?: string | null;
+  price_cents?: number | null;
   created_at?: string;
+};
+
+const formatPrice = (priceCents?: number | null) => {
+  if (priceCents === null || priceCents === undefined) {
+    return '—';
+  }
+
+  return new Intl.NumberFormat('tr-TR', {
+    style: 'currency',
+    currency: 'TRY',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(priceCents / 100);
 };
 
 export default function MyScriptsPage() {
@@ -19,48 +34,84 @@ export default function MyScriptsPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchScripts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const fetchScripts = useCallback(async (ownerId: string, showLoading = false) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('scripts')
+        .select(
+          'id,title,genre,length,synopsis,description,price_cents,created_at'
+        )
+        .eq('owner_id', ownerId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Veri alınamadı:', error.message);
+        setScripts([]);
+      } else {
+        setScripts(data ?? []);
+      }
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
   }, []);
 
-  const fetchScripts = async () => {
-    setLoading(true);
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    // Oturumdaki kullanıcıyı al
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser();
+    const initialize = async () => {
+      const {
+        data: { user },
+        error: userErr,
+      } = await supabase.auth.getUser();
 
-    if (userErr) {
-      console.error('Kullanıcı bilgisi alınamadı:', userErr.message);
+      if (userErr) {
+        console.error('Kullanıcı bilgisi alınamadı:', userErr.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!user) {
+        setLoading(false);
+        router.push('/auth/sign-in');
+        return;
+      }
+
+      await fetchScripts(user.id, true);
+
+      channel = supabase
+        .channel(`scripts-owner-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'scripts',
+            filter: `owner_id=eq.${user.id}`,
+          },
+          () => {
+            fetchScripts(user.id);
+          }
+        )
+        .subscribe();
+    };
+
+    initialize().catch((err) => {
+      console.error('Beklenmeyen bir hata oluştu:', err);
       setLoading(false);
-      return;
-    }
+    });
 
-    if (!user) {
-      // Oturum yoksa giriş sayfasına yönlendir
-      router.push('/auth/sign-in');
-      return;
-    }
-
-    // Sadece oturum açmış kullanıcıya ait senaryoları çek
-    const { data, error } = await supabase
-      .from('scripts')
-      .select('*')
-      .eq('owner_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Veri alınamadı:', error.message);
-      setScripts([]);
-    } else {
-      setScripts(data ?? []);
-    }
-
-    setLoading(false);
-  };
+    return () => {
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [router, fetchScripts]);
 
   const handleDelete = async (id: string) => {
     const confirmed = confirm(
@@ -113,6 +164,9 @@ export default function MyScriptsPage() {
                 Tür: {s.genre} {s.length ? `· Süre: ${s.length} dk` : ''}
               </p>
               <p className="text-sm text-[#4a3d2f]">{s.synopsis ?? ''}</p>
+              <p className="text-sm font-medium text-[#4a3d2f]">
+                Fiyat: {formatPrice(s.price_cents)}
+              </p>
               <div className="flex gap-2 mt-2">
                 <button
                   className="btn btn-secondary"
