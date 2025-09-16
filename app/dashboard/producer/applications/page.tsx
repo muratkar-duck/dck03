@@ -8,8 +8,8 @@ type ApplicationRow = {
   application_id: string;
   status: string;
   created_at: string;
-  request_id: string;
-  request_title: string;
+  listing_id: string;
+  listing_title: string;
   script_id: string;
   script_title: string;
   script_genre: string;
@@ -41,12 +41,12 @@ export default function ProducerApplicationsPage() {
         id,
         status,
         created_at,
-        request_id,
+        listing_id,
         script_id,
-        requests!inner(id, title),
+        producer_listings!inner(id, title, owner_id),
         scripts!inner(id, title, genre, length, price_cents)
       `)
-      .eq('producer_id', user.id)
+      .eq('producer_listings.owner_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -54,28 +54,41 @@ export default function ProducerApplicationsPage() {
       setApplications([]);
     } else {
       // Veriyi düzenle
-      const formatted = (data || []).map((item: any) => ({
-        application_id: item.id,
-        status: item.status,
-        created_at: item.created_at,
-        request_id: item.request_id,
-        request_title: item.requests?.title || '',
-        script_id: item.script_id,
-        script_title: item.scripts?.title || '',
-        script_genre: item.scripts?.genre || '',
-        length:
-          typeof item.scripts?.length === 'number'
-            ? item.scripts.length
-            : item.scripts?.length != null
-            ? Number(item.scripts.length)
-            : null,
-        price_cents:
-          typeof item.scripts?.price_cents === 'number'
-            ? item.scripts.price_cents
-            : item.scripts?.price_cents != null
-            ? Number(item.scripts.price_cents)
-            : null,
-      }));
+      const formatted = (data || []).map((item: any) => {
+        const listing = Array.isArray(item.producer_listings)
+          ? item.producer_listings[0]
+          : item.producer_listings;
+        const script = Array.isArray(item.scripts)
+          ? item.scripts[0]
+          : item.scripts;
+
+        const normalizedLength =
+          typeof script?.length === 'number'
+            ? script.length
+            : script?.length != null
+            ? Number(script.length)
+            : null;
+
+        const normalizedPrice =
+          typeof script?.price_cents === 'number'
+            ? script.price_cents
+            : script?.price_cents != null
+            ? Number(script.price_cents)
+            : null;
+
+        return {
+          application_id: item.id,
+          status: item.status,
+          created_at: item.created_at,
+          listing_id: item.listing_id ?? listing?.id ?? '',
+          listing_title: listing?.title ?? '',
+          script_id: item.script_id ?? script?.id ?? '',
+          script_title: script?.title ?? '',
+          script_genre: script?.genre ?? '',
+          length: normalizedLength,
+          price_cents: normalizedPrice,
+        } as ApplicationRow;
+      });
       setApplications(formatted);
     }
 
@@ -164,7 +177,7 @@ export default function ProducerApplicationsPage() {
                       Fiyat: {formatPrice(app.price_cents)}
                     </p>
                     <p className="text-sm text-[#7a5c36]">
-                      İlan: {app.request_title}
+                      İlan: {app.listing_title || '—'}
                     </p>
                     <p className="text-xs text-[#a38d6d]">
                       Başvuru:{' '}
