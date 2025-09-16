@@ -53,7 +53,9 @@ export default function WriterRequestDetailPage() {
   const fetchRequest = async (requestId: string) => {
     const { data, error } = await supabase
       .from('requests')
-      .select('*')
+      .select(
+        'id, title, description, genre, length, budget, created_at, user_id, producer_id'
+      )
       .eq('id', requestId)
       .single();
 
@@ -71,7 +73,7 @@ export default function WriterRequestDetailPage() {
 
     const { data, error } = await supabase
       .from('scripts')
-      .select('id, title, genre, length')
+      .select('id, title, genre, length, price_cents, created_at')
       .eq('owner_id', user.id);
 
     if (!error && data) {
@@ -87,9 +89,9 @@ export default function WriterRequestDetailPage() {
 
     const { data, error } = await supabase
       .from('applications')
-      .select('id, status, script_id, created_at')
+      .select('id, request_id, listing_id, writer_id, script_id, status, created_at')
       .eq('request_id', requestId)
-      .eq('owner_id', user.id)
+      .eq('writer_id', user.id)
       .maybeSingle();
 
     if (!error) setMyApplication((data as MyAppRow) || null);

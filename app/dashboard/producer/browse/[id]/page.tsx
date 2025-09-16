@@ -31,7 +31,9 @@ export default function ScriptDetailPage() {
       try {
         const { data, error } = await supabase
           .from('scripts')
-          .select('id, title, genre, length, price_cents, description')
+          .select(
+            'id, title, genre, length, price_cents, description, created_at, owner_id'
+          )
           .eq('id', id)
           .single();
 
@@ -53,7 +55,7 @@ export default function ScriptDetailPage() {
         if (!userError && user) {
           const { data: existingOrder, error: orderError } = await supabase
             .from('orders')
-            .select('id')
+            .select('id, script_id, buyer_id, amount_cents, created_at')
             .eq('script_id', id)
             .eq('buyer_id', user.id)
             .maybeSingle();

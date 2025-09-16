@@ -66,7 +66,7 @@ export default function WriterRequestsPage() {
     // Kullanıcının senaryolarını çek
     const { data: scrData } = await supabase
       .from('scripts')
-      .select('*')
+      .select('id, title, genre, length, price_cents, created_at, owner_id')
       .eq('owner_id', user.id);
 
     // Veriyi düzenle

@@ -37,7 +37,9 @@ export default function ProducerMyRequestsPage() {
 
     const { data, error } = await supabase
       .from('requests')
-      .select('*')
+      .select(
+        'id, title, description, genre, length, budget, deadline, created_at, producer_id'
+      )
       .eq('producer_id', user.id)
       .order('deadline', { ascending: false });
 

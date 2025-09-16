@@ -21,7 +21,7 @@ export default function DashboardIndexRedirect() {
 
         const { data: row, error: rerr } = await supabase
           .from('users')
-          .select('role')
+          .select('id, email, role')
           .eq('id', user.id)
           .maybeSingle();
 

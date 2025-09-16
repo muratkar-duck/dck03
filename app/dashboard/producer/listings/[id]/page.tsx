@@ -94,7 +94,7 @@ export default function ProducerListingDetailPage() {
             id,
             status,
             created_at,
-            script:scripts ( id, title, genre, length, price_cents ),
+            script:scripts ( id, title, genre, length, price_cents, created_at ),
             writer:users ( id, email )
           `;
 

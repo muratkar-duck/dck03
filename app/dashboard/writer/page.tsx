@@ -114,7 +114,9 @@ export default function WriterDashboardPage() {
 
         const { data: scriptData, error: scriptError } = await supabase
           .from('scripts')
-          .select('id,title,price_cents,orders(amount_cents)')
+          .select(
+            'id,title,genre,length,price_cents,created_at,orders(amount_cents)'
+          )
           .eq('owner_id', user.id)
           .order('created_at', { ascending: false });
 
@@ -145,10 +147,17 @@ export default function WriterDashboardPage() {
           .select(
             `
               id,
+              listing_id,
+              writer_id,
+              script_id,
               status,
+              created_at,
               listing:producer_listings (
                 id,
-                title
+                title,
+                genre,
+                budget_cents,
+                created_at
               )
             `
           )
