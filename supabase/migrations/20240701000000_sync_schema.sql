@@ -246,53 +246,141 @@ begin
   end if;
 end $$;
 
-alter table public.applications
-  add constraint applications_writer_id_fkey
-    foreign key (writer_id)
-    references public.users (id)
-    on delete cascade;
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'applications'
+      and tc.constraint_name = 'applications_writer_id_fkey'
+  ) then
+    alter table public.applications
+      add constraint applications_writer_id_fkey
+        foreign key (writer_id)
+        references public.users (id)
+        on delete cascade;
+  end if;
+end $$;
 
-alter table public.applications
-  add constraint applications_user_id_fkey
-    foreign key (user_id)
-    references public.users (id)
-    on delete cascade;
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'applications'
+      and tc.constraint_name = 'applications_user_id_fkey'
+  ) then
+    alter table public.applications
+      add constraint applications_user_id_fkey
+        foreign key (user_id)
+        references public.users (id)
+        on delete cascade;
+  end if;
+end $$;
 
-alter table public.applications
-  add constraint applications_owner_id_fkey
-    foreign key (owner_id)
-    references public.users (id)
-    on delete cascade;
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'applications'
+      and tc.constraint_name = 'applications_owner_id_fkey'
+  ) then
+    alter table public.applications
+      add constraint applications_owner_id_fkey
+        foreign key (owner_id)
+        references public.users (id)
+        on delete cascade;
+  end if;
+end $$;
 
-alter table public.applications
-  add constraint applications_producer_id_fkey
-    foreign key (producer_id)
-    references public.users (id)
-    on delete cascade;
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'applications'
+      and tc.constraint_name = 'applications_producer_id_fkey'
+  ) then
+    alter table public.applications
+      add constraint applications_producer_id_fkey
+        foreign key (producer_id)
+        references public.users (id)
+        on delete cascade;
+  end if;
+end $$;
 
-alter table public.applications
-  add constraint applications_listing_id_fkey
-    foreign key (listing_id)
-    references public.producer_listings (id)
-    on delete cascade;
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'applications'
+      and tc.constraint_name = 'applications_listing_id_fkey'
+  ) then
+    alter table public.applications
+      add constraint applications_listing_id_fkey
+        foreign key (listing_id)
+        references public.producer_listings (id)
+        on delete cascade;
+  end if;
+end $$;
 
-alter table public.applications
-  add constraint applications_producer_listing_id_fkey
-    foreign key (producer_listing_id)
-    references public.producer_listings (id)
-    on delete cascade;
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'applications'
+      and tc.constraint_name = 'applications_producer_listing_id_fkey'
+  ) then
+    alter table public.applications
+      add constraint applications_producer_listing_id_fkey
+        foreign key (producer_listing_id)
+        references public.producer_listings (id)
+        on delete cascade;
+  end if;
+end $$;
 
-alter table public.applications
-  add constraint applications_request_id_fkey
-    foreign key (request_id)
-    references public.requests (id)
-    on delete cascade;
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'applications'
+      and tc.constraint_name = 'applications_request_id_fkey'
+  ) then
+    alter table public.applications
+      add constraint applications_request_id_fkey
+        foreign key (request_id)
+        references public.requests (id)
+        on delete cascade;
+  end if;
+end $$;
 
-alter table public.applications
-  add constraint applications_script_id_fkey
-    foreign key (script_id)
-    references public.scripts (id)
-    on delete cascade;
+do $$
+begin
+  if not exists (
+    select 1
+    from information_schema.table_constraints tc
+    where tc.constraint_schema = 'public'
+      and tc.table_name = 'applications'
+      and tc.constraint_name = 'applications_script_id_fkey'
+  ) then
+    alter table public.applications
+      add constraint applications_script_id_fkey
+        foreign key (script_id)
+        references public.scripts (id)
+        on delete cascade;
+  end if;
+end $$;
 
 create index if not exists idx_applications_listing_id on public.applications (listing_id);
 create index if not exists idx_applications_producer_listing_id on public.applications (producer_listing_id);
