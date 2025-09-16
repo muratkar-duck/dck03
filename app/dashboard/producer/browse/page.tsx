@@ -20,8 +20,10 @@ export default function BrowseScriptsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Basit istemci tarafı filtre/sort state (şimdilik demo; sunucuya gönderilmiyor)
+  const [search, setSearch] = useState('');
   const [selectedGenre, setSelectedGenre] = useState<string>('Tüm Türler');
-  const [selectedFormat, setSelectedFormat] = useState<string>('Süre'); // Kısa/Uzun/Dizi vb. (elde veri yoksa no-op)
+  const [selectedLength, setSelectedLength] = useState<string>('Tüm Süreler');
+  const [selectedPrice, setSelectedPrice] = useState<string>('Tüm Fiyatlar');
   const [selectedSort, setSelectedSort] = useState<string>('En Yeni');
 
   const fetchScripts = useCallback(async () => {
@@ -57,16 +59,42 @@ export default function BrowseScriptsPage() {
   const filtered = useMemo(() => {
     let arr = [...scripts];
 
-    // Tür filtresi (basit eşleşme)
+    // Başlık arama
+    if (search.trim()) {
+      arr = arr.filter((s) =>
+        s.title.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    // Tür filtresi
     if (selectedGenre !== 'Tüm Türler') {
       arr = arr.filter((s) =>
         (s.genre || '').toLowerCase().includes(selectedGenre.toLowerCase())
       );
     }
 
-    // Format filtresi: elde net bir alan olmadığı için şimdilik no-op.
-    // İleride script.type/format alanı gelirse burada filtreleriz.
-    // if (selectedFormat !== 'Süre') { ... }
+    // Süre filtresi
+    if (selectedLength !== 'Tüm Süreler') {
+      arr = arr.filter((s) => {
+        const len = s.length ?? 0;
+        if (selectedLength === '0-30 dk') return len <= 30;
+        if (selectedLength === '31-90 dk') return len > 30 && len <= 90;
+        if (selectedLength === '90+ dk') return len > 90;
+        return true;
+      });
+    }
+
+    // Fiyat filtresi
+    if (selectedPrice !== 'Tüm Fiyatlar') {
+      arr = arr.filter((s) => {
+        const price = s.price_cents ?? 0;
+        if (selectedPrice === '0-1000₺') return price <= 100000; // cents
+        if (selectedPrice === '1000-5000₺')
+          return price > 100000 && price <= 500000;
+        if (selectedPrice === '5000₺+') return price > 500000;
+        return true;
+      });
+    }
 
     // Sıralama
     if (selectedSort === 'En Yeni') {
@@ -74,10 +102,14 @@ export default function BrowseScriptsPage() {
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
+    } else if (selectedSort === 'Fiyat Artan') {
+      arr.sort((a, b) => (a.price_cents ?? 0) - (b.price_cents ?? 0));
+    } else if (selectedSort === 'Fiyat Azalan') {
+      arr.sort((a, b) => (b.price_cents ?? 0) - (a.price_cents ?? 0));
     }
-    // “En Çok Görüntülenen” gibi bir alan yok → şimdilik yalnızca “En Yeni”
+
     return arr;
-  }, [scripts, selectedGenre, selectedFormat, selectedSort]);
+  }, [scripts, search, selectedGenre, selectedLength, selectedPrice, selectedSort]);
 
   const formatMinutes = (m: number | null) => {
     if (m == null) return '-';
@@ -127,6 +159,15 @@ export default function BrowseScriptsPage() {
 
       {/* Filtreler */}
       <div className="flex flex-wrap gap-4 mb-6">
+        <input
+          type="text"
+          className="p-2 border rounded-lg flex-1 min-w-[150px]"
+          placeholder="Başlık ara"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          aria-label="Başlık arama"
+        />
+
         <select
           className="p-2 border rounded-lg"
           value={selectedGenre}
@@ -143,15 +184,26 @@ export default function BrowseScriptsPage() {
 
         <select
           className="p-2 border rounded-lg"
-          value={selectedFormat}
-          onChange={(e) => setSelectedFormat(e.target.value)}
-          aria-label="Format/Süre filtreleme"
+          value={selectedLength}
+          onChange={(e) => setSelectedLength(e.target.value)}
+          aria-label="Süre filtreleme"
         >
-          <option>Süre</option>
-          <option>Kısa Film</option>
-          <option>Uzun Metraj</option>
-          <option>Dizi</option>
-          <option>Mini Dizi</option>
+          <option>Tüm Süreler</option>
+          <option>0-30 dk</option>
+          <option>31-90 dk</option>
+          <option>90+ dk</option>
+        </select>
+
+        <select
+          className="p-2 border rounded-lg"
+          value={selectedPrice}
+          onChange={(e) => setSelectedPrice(e.target.value)}
+          aria-label="Fiyat filtreleme"
+        >
+          <option>Tüm Fiyatlar</option>
+          <option>0-1000₺</option>
+          <option>1000-5000₺</option>
+          <option>5000₺+</option>
         </select>
 
         <select
@@ -161,7 +213,8 @@ export default function BrowseScriptsPage() {
           aria-label="Sıralama"
         >
           <option>En Yeni</option>
-          {/* <option>En Çok Görüntülenen</option>  // veri yoksa gizli tut */}
+          <option>Fiyat Artan</option>
+          <option>Fiyat Azalan</option>
         </select>
       </div>
 
