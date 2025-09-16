@@ -56,16 +56,20 @@ export default function UserMenu() {
             setNotifCount(count ?? 0);
           }
 
-          // Sohbet: accepted başvurular (şimdilik = sohbetler)
+          // Sohbet: Bu yapımcının konuşmaları (conversations → applications → listings)
           {
             const { count } = await supabase
-              .from('applications')
-              .select('id, listing:producer_listings!inner(owner_id)', {
-                count: 'exact',
-                head: true,
-              })
-              .eq('listing.owner_id', user.id)
-              .eq('status', 'accepted');
+              .from('conversations')
+              .select(
+                `
+                  id,
+                  application:applications!inner(
+                    listing:producer_listings!inner(owner_id)
+                  )
+                `,
+                { count: 'exact', head: true }
+              )
+              .eq('application.listing.owner_id', user.id);
             setChatCount(count ?? 0);
           }
         } else if (role === 'writer') {
@@ -79,13 +83,18 @@ export default function UserMenu() {
             setNotifCount(count ?? 0);
           }
 
-          // Sohbet: accepted başvurular (şimdilik = sohbetler)
+          // Sohbet: Bu yazarın konuşmaları (conversations → applications)
           {
             const { count } = await supabase
-              .from('applications')
-              .select('*', { count: 'exact', head: true })
-              .eq('writer_id', user.id)
-              .eq('status', 'accepted');
+              .from('conversations')
+              .select(
+                `
+                  id,
+                  application:applications!inner(writer_id)
+                `,
+                { count: 'exact', head: true }
+              )
+              .eq('application.writer_id', user.id);
             setChatCount(count ?? 0);
           }
         } else {
