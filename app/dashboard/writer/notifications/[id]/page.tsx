@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -20,12 +20,11 @@ export default function WriterNotificationDetailPage() {
   const [row, setRow] = useState<Row | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    load();
-  }, [id]);
-
-  const load = async () => {
-    if (!id) return;
+  const load = useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from('applications')
       .select(
@@ -41,7 +40,11 @@ export default function WriterNotificationDetailPage() {
 
     if (!error) setRow(data as Row);
     setLoading(false);
-  };
+  }, [id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const getBadge = (status: string) => {
     if (status === 'accepted')

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -17,17 +17,17 @@ type Script = {
 };
 
 export default function ScriptDetailPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
 
   const [script, setScript] = useState<Script | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (id) fetchScript();
-  }, [id]);
-
-  const fetchScript = async () => {
+  const fetchScript = useCallback(async () => {
+    if (!id) {
+      setLoading(false);
+      return;
+    }
     const { data, error } = await supabase
       .from('scripts')
       .select(
@@ -42,7 +42,11 @@ export default function ScriptDetailPage() {
       setScript(data);
     }
     setLoading(false);
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchScript();
+  }, [fetchScript]);
 
   if (loading) return <p className="text-sm text-gray-500">Yükleniyor...</p>;
   if (!script)
