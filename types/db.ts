@@ -23,6 +23,16 @@ export interface Script {
   created_at: string; // ISO
 }
 
+export interface ProducerListing {
+  id: string;
+  owner_id: string;
+  title: string;
+  description: string;
+  genre: string;
+  budget_cents: number;
+  created_at: string;
+}
+
 export interface Request {
   id: string;
   title: string;
