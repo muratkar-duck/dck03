@@ -93,7 +93,7 @@ export default function ProducerNotificationDetailPage() {
 
             <div className="flex gap-2 pt-2">
               <Link
-                href={`/dashboard/producer/messages/${row.id}`}
+                href={`/dashboard/producer/messages?application=${row.id}`}
                 className="btn btn-primary"
               >
                 💬 Sohbeti Aç
