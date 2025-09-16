@@ -73,6 +73,20 @@ export interface Order {
   created_at: string;
 }
 
+export interface Conversation {
+  id: string;
+  application_id: string;
+  created_at: string;
+}
+
+export interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  body: string;
+  created_at: string;
+}
+
 // Sayfalarda kullandığımız JOIN çıktı tipleri
 export interface ApplicationWithJoins {
   id: string;
