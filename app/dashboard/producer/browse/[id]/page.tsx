@@ -9,30 +9,117 @@ export default function ScriptDetailPage() {
   const router = useRouter();
   const [script, setScript] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [hasPurchased, setHasPurchased] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       if (!id || typeof id !== 'string') {
+        setScript(null);
+        setHasPurchased(false);
         setLoading(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from('scripts')
-        .select('id, title, genre, length, price_cents, description')
-        .eq('id', id)
-        .single();
+      setLoading(true);
+      setHasPurchased(false);
+      setPurchaseMessage(null);
+      setPurchaseError(null);
 
-      if (error) {
-        console.error('Hata:', error.message);
-      } else {
+      try {
+        const { data, error } = await supabase
+          .from('scripts')
+          .select('id, title, genre, length, price_cents, description')
+          .eq('id', id)
+          .single();
+
+        if (error || !data) {
+          if (error) {
+            console.error('Hata:', error.message);
+          }
+          setScript(null);
+          return;
+        }
+
         setScript(data);
+
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (!userError && user) {
+          const { data: existingOrder, error: orderError } = await supabase
+            .from('orders')
+            .select('id')
+            .eq('script_id', id)
+            .eq('buyer_id', user.id)
+            .maybeSingle();
+
+          if (orderError) {
+            console.error('Sipariş kontrol hatası:', orderError.message);
+          } else if (existingOrder) {
+            setHasPurchased(true);
+          }
+        }
+      } catch (err) {
+        console.error('Hata:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     load();
   }, [id]);
+
+  const handlePurchase = async () => {
+    if (!id || typeof id !== 'string') {
+      setPurchaseError('Geçersiz senaryo.');
+      return;
+    }
+
+    if (!script) {
+      setPurchaseError('Satın alınacak senaryo bulunamadı.');
+      return;
+    }
+
+    setPurchaseMessage(null);
+    setPurchaseError(null);
+    setIsPurchasing(true);
+
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        setPurchaseError('Satın alma işlemi için giriş yapmalısınız.');
+        return;
+      }
+
+      const { error: orderError } = await supabase.from('orders').insert({
+        script_id: id,
+        buyer_id: user.id,
+        amount_cents: script.price_cents,
+      });
+
+      if (orderError) {
+        setPurchaseError(orderError.message || 'Satın alma işlemi başarısız.');
+        return;
+      }
+
+      setPurchaseMessage('Satın alma işlemi başarıyla tamamlandı.');
+      setHasPurchased(true);
+    } catch (error) {
+      console.error('Satın alma hatası:', error);
+      setPurchaseError('Satın alma işlemi sırasında beklenmeyen bir hata oluştu.');
+    } finally {
+      setIsPurchasing(false);
+    }
+  };
 
   if (loading) return <p className="text-sm text-gray-500">Yükleniyor...</p>;
   if (!script)
