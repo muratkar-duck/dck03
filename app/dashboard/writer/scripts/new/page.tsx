@@ -10,7 +10,9 @@ export default function NewScriptPage() {
   const [title, setTitle] = useState('');
   const [genre, setGenre] = useState('');
   const [length, setLength] = useState<number | ''>(''); // dakika
-  const [synopsis, setSynopsis] = useState(''); // açıklama
+  const [synopsis, setSynopsis] = useState(''); // kısa özet
+  const [description, setDescription] = useState('');
+  const [priceCents, setPriceCents] = useState<number | ''>('');
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,11 +37,13 @@ export default function NewScriptPage() {
 
     const { error } = await supabase.from('scripts').insert([
       {
+        owner_id: userId,
         title,
         genre,
         length: length === '' ? null : length,
         synopsis,
-        user_id: userId,
+        description,
+        price_cents: priceCents === '' ? null : priceCents,
       },
     ]);
 
@@ -51,6 +55,8 @@ export default function NewScriptPage() {
       setGenre('');
       setLength('');
       setSynopsis('');
+      setDescription('');
+      setPriceCents('');
       router.push('/dashboard/writer/scripts');
     }
   };
@@ -102,14 +108,49 @@ export default function NewScriptPage() {
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Açıklama</label>
+          <label className="block text-sm font-medium mb-1">
+            Kısa Özet (2-3 cümle)
+          </label>
           <textarea
             className="w-full p-2 border rounded-lg"
-            rows={5}
+            rows={3}
+            maxLength={350}
             value={synopsis}
             onChange={(e) => setSynopsis(e.target.value)}
             required
           ></textarea>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Detaylı Açıklama
+          </label>
+          <textarea
+            className="w-full p-2 border rounded-lg"
+            rows={7}
+            minLength={50}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            required
+          ></textarea>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">
+            Fiyat (₺)
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            className="w-full p-2 border rounded-lg"
+            value={priceCents === '' ? '' : priceCents / 100}
+            onChange={(e) => {
+              const value = e.target.value;
+              setPriceCents(value === '' ? '' : Math.round(Number(value) * 100));
+            }}
+            required
+          />
         </div>
 
         <button

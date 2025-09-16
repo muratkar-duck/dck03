@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -11,14 +11,14 @@ export default function EditScriptPage() {
   const [title, setTitle] = useState('');
   const [genre, setGenre] = useState('');
   const [length, setLength] = useState<number | ''>(''); // Supabase alanı
-  const [synopsis, setSynopsis] = useState(''); // Supabase alanı
+  const [synopsis, setSynopsis] = useState(''); // kısa özet
+  const [description, setDescription] = useState('');
+  const [priceCents, setPriceCents] = useState<number | ''>('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (id) fetchScript();
-  }, [id]);
+  const fetchScript = useCallback(async () => {
+    if (!id) return;
 
-  const fetchScript = async () => {
     const { data, error } = await supabase
       .from('scripts')
       .select('*')
@@ -30,11 +30,17 @@ export default function EditScriptPage() {
     } else if (data) {
       setTitle(data.title);
       setGenre(data.genre);
-      setLength(data.length);
-      setSynopsis(data.synopsis);
+      setLength(data.length ?? '');
+      setSynopsis(data.synopsis ?? '');
+      setDescription(data.description ?? '');
+      setPriceCents(data.price_cents ?? '');
     }
     setLoading(false);
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchScript();
+  }, [fetchScript]);
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +52,8 @@ export default function EditScriptPage() {
         genre,
         length: length === '' ? null : length,
         synopsis,
+        description,
+        price_cents: priceCents === '' ? null : priceCents,
       })
       .eq('id', id);
 
@@ -99,20 +107,53 @@ export default function EditScriptPage() {
             type="number"
             className="w-full p-2 border rounded-lg"
             value={length}
-            onChange={(e) => setLength(Number(e.target.value))}
+            onChange={(e) =>
+              setLength(e.target.value === '' ? '' : Number(e.target.value))
+            }
             required
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium mb-1">Açıklama</label>
+          <label className="block text-sm font-medium mb-1">
+            Kısa Özet (2-3 cümle)
+          </label>
           <textarea
             className="w-full p-2 border rounded-lg"
-            rows={5}
+            rows={3}
+            maxLength={350}
             value={synopsis}
             onChange={(e) => setSynopsis(e.target.value)}
             required
           ></textarea>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Detaylı Açıklama</label>
+          <textarea
+            className="w-full p-2 border rounded-lg"
+            rows={7}
+            minLength={50}
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            required
+          ></textarea>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1">Fiyat (₺)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            className="w-full p-2 border rounded-lg"
+            value={priceCents === '' ? '' : priceCents / 100}
+            onChange={(e) => {
+              const value = e.target.value;
+              setPriceCents(value === '' ? '' : Math.round(Number(value) * 100));
+            }}
+            required
+          />
         </div>
 
         <div className="flex gap-2">
