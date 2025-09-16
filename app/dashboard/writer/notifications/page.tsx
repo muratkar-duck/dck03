@@ -107,7 +107,7 @@ export default function WriterNotificationsPage() {
                 <div className="flex gap-2">
                   {r.status === 'accepted' ? (
                     <Link
-                      href={`/dashboard/writer/messages/${r.id}`}
+                      href={`/dashboard/writer/messages?application=${r.id}`}
                       className="btn btn-primary"
                     >
                       💬 Sohbeti Aç

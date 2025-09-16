@@ -183,7 +183,7 @@ export default function WriterRequestDetailPage() {
               {myApplication.status === 'accepted' ? (
                 // ✅ Accepted → Sohbet
                 <Link
-                  href={`/dashboard/writer/messages/${myApplication.id}`}
+                  href={`/dashboard/writer/messages?application=${myApplication.id}`}
                   className="btn btn-primary"
                 >
                   💬 Sohbeti Aç
