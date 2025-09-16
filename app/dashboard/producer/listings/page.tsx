@@ -100,27 +100,29 @@ export default function ProducerListingsPage() {
         ) : (
           <ul className="space-y-4">
             {listings.map((listing) => (
-              <li
-                key={listing.id}
-                className="p-4 bg-white border rounded-lg shadow-sm space-y-2"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <h2 className="text-lg font-semibold text-[#0e5b4a]">
-                    {listing.title}
-                  </h2>
-                  <span className="text-sm font-medium text-[#ffaa06]">
-                    {currencyFormatter.format(listing.budget_cents / 100)}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-[#7a5c36]">
-                  <span>Tür: {listing.genre}</span>
-                  <span>
-                    Oluşturuldu: {dateFormatter.format(new Date(listing.created_at))}
-                  </span>
-                </div>
-                {listing.description && (
-                  <p className="text-sm text-[#4f3d2a]">{listing.description}</p>
-                )}
+              <li key={listing.id}>
+                <Link
+                  href={`/dashboard/producer/listings/${listing.id}`}
+                  className="block p-4 bg-white border rounded-lg shadow-sm space-y-2 hover:border-[#0e5b4a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e5b4a]"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <h2 className="text-lg font-semibold text-[#0e5b4a]">
+                      {listing.title}
+                    </h2>
+                    <span className="text-sm font-medium text-[#ffaa06]">
+                      {currencyFormatter.format(listing.budget_cents / 100)}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-4 text-sm text-[#7a5c36]">
+                    <span>Tür: {listing.genre}</span>
+                    <span>
+                      Oluşturuldu: {dateFormatter.format(new Date(listing.created_at))}
+                    </span>
+                  </div>
+                  {listing.description && (
+                    <p className="text-sm text-[#4f3d2a]">{listing.description}</p>
+                  )}
+                </Link>
               </li>
             ))}
           </ul>
