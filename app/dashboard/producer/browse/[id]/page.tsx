@@ -17,7 +17,7 @@ export default function ScriptDetailPage() {
   const fetchScript = async () => {
     const { data, error } = await supabase
       .from('scripts')
-      .select('*')
+      .select('id, title, genre, length, price_cents, description')
       .eq('id', id)
       .single();
 
@@ -37,7 +37,8 @@ export default function ScriptDetailPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">🎬 {script.title}</h1>
       <p className="text-sm text-[#7a5c36]">
-        Tür: {script.genre} &middot; Süre: {script.duration}
+        Tür: {script.genre} &middot; Süre: {script.length} &middot; Fiyat: ₺
+        {(script.price_cents / 100).toFixed(2)}
       </p>
 
       <div className="bg-white rounded-xl shadow p-6 border-l-4 border-[#f9c74f] space-y-4">
