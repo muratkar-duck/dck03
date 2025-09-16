@@ -1,18 +1,54 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
 import { supabase } from '@/lib/supabaseClient';
 
 type OrderRow = {
   amount_cents: number | null;
-  scripts: {
-    owner_id: string;
-  };
 };
 
-const formatCurrency = (cents: number | null) => {
-  if (cents === null) {
+type ScriptQueryRow = {
+  id: string;
+  title: string;
+  price_cents: number | null;
+  orders?: OrderRow[] | OrderRow | null;
+};
+
+type ScriptStat = {
+  id: string;
+  title: string;
+  price_cents: number | null;
+  salesCount: number;
+  revenueCents: number;
+};
+
+type ProducerListingRow = {
+  id: string;
+  title: string;
+};
+
+type ApplicationQueryRow = {
+  id: string;
+  status: string | null;
+  listing?: ProducerListingRow | ProducerListingRow[] | null;
+};
+
+type ApplicationSummary = {
+  id: string;
+  status: string;
+  listingTitle: string;
+};
+
+const APPLICATION_STATUS_LABELS: Record<string, string> = {
+  pending: 'Beklemede',
+  accepted: 'Kabul edildi',
+  rejected: 'Reddedildi',
+};
+
+const formatCurrency = (cents: number | null | undefined) => {
+  if (cents === null || cents === undefined) {
     return '—';
   }
 
@@ -24,15 +60,40 @@ const formatCurrency = (cents: number | null) => {
   }).format(cents / 100);
 };
 
+const toArray = <T,>(value: T | T[] | null | undefined): T[] => {
+  if (!value) {
+    return [];
+  }
+
+  return Array.isArray(value) ? value : [value];
+};
+
+const toSingle = <T,>(value: T | T[] | null | undefined): T | null => {
+  if (!value) {
+    return null;
+  }
+
+  return Array.isArray(value) ? value[0] ?? null : value;
+};
+
+const getStatusLabel = (status: string) =>
+  APPLICATION_STATUS_LABELS[status] ?? status;
+
 export default function WriterDashboardPage() {
-  const [salesCount, setSalesCount] = useState<number | null>(null);
-  const [totalRevenueCents, setTotalRevenueCents] = useState<number | null>(null);
-  const [loadingSales, setLoadingSales] = useState(true);
+  const [scriptStats, setScriptStats] = useState<ScriptStat[]>([]);
+  const [loadingScripts, setLoadingScripts] = useState(true);
+  const [applications, setApplications] = useState<ApplicationSummary[]>([]);
+  const [loadingApplications, setLoadingApplications] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchSales = async () => {
+    const fetchData = async () => {
+      setLoadingScripts(true);
+      setLoadingApplications(true);
+      setErrorMessage(null);
+
       try {
         const {
           data: { user },
@@ -45,105 +106,259 @@ export default function WriterDashboardPage() {
 
         if (!user) {
           if (isMounted) {
-            setSalesCount(0);
-            setTotalRevenueCents(0);
+            setScriptStats([]);
+            setApplications([]);
           }
           return;
         }
 
-        const { data, error } = await supabase
-          .from('orders')
-          .select('amount_cents, scripts!inner(owner_id)')
-          .eq('scripts.owner_id', user.id);
+        const { data: scriptData, error: scriptError } = await supabase
+          .from('scripts')
+          .select('id,title,price_cents,orders(amount_cents)')
+          .eq('owner_id', user.id)
+          .order('created_at', { ascending: false });
 
-        if (error) {
-          throw error;
+        if (scriptError) {
+          throw scriptError;
         }
 
-        const rows: OrderRow[] = data ?? [];
-        const count = rows.length;
-        const total = rows.reduce(
-          (acc, order) => acc + (order.amount_cents ?? 0),
-          0
-        );
+        const scripts = (scriptData as ScriptQueryRow[] | null) ?? [];
+        const normalizedScripts = scripts.map<ScriptStat>((script) => {
+          const orders = toArray(script.orders);
+          const salesCount = orders.length;
+          const revenueCents = orders.reduce(
+            (acc, order) => acc + (order?.amount_cents ?? 0),
+            0
+          );
+
+          return {
+            id: script.id,
+            title: script.title,
+            price_cents: script.price_cents ?? null,
+            salesCount,
+            revenueCents,
+          };
+        });
+
+        const { data: applicationData, error: applicationError } = await supabase
+          .from('applications')
+          .select(
+            `
+              id,
+              status,
+              listing:producer_listings (
+                id,
+                title
+              )
+            `
+          )
+          .eq('writer_id', user.id)
+          .order('created_at', { ascending: false });
+
+        if (applicationError) {
+          throw applicationError;
+        }
+
+        const normalizedApplications =
+          (applicationData as ApplicationQueryRow[] | null)?.map((app) => {
+            const listing = toSingle(app.listing);
+
+            return {
+              id: app.id,
+              status: app.status ?? 'pending',
+              listingTitle: listing?.title ?? '—',
+            };
+          }) ?? [];
 
         if (isMounted) {
-          setSalesCount(count);
-          setTotalRevenueCents(total);
+          setScriptStats(normalizedScripts);
+          setApplications(normalizedApplications);
         }
-      } catch (err) {
-        console.error('Satış bilgileri alınamadı:', err);
+      } catch (error) {
+        console.error('Dashboard verileri alınamadı:', error);
         if (isMounted) {
-          setSalesCount(0);
-          setTotalRevenueCents(0);
+          setScriptStats([]);
+          setApplications([]);
+          setErrorMessage(
+            'Veriler alınırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
+          );
         }
       } finally {
         if (isMounted) {
-          setLoadingSales(false);
+          setLoadingScripts(false);
+          setLoadingApplications(false);
         }
       }
     };
 
-    fetchSales();
+    fetchData();
 
     return () => {
       isMounted = false;
     };
   }, []);
 
+  const scriptCount = scriptStats.length;
+
+  const totalSalesCount = useMemo(
+    () => scriptStats.reduce((acc, script) => acc + script.salesCount, 0),
+    [scriptStats]
+  );
+
+  const totalRevenueCents = useMemo(
+    () => scriptStats.reduce((acc, script) => acc + script.revenueCents, 0),
+    [scriptStats]
+  );
+
   return (
     <AuthGuard allowedRoles={['writer']}>
       <div className="space-y-8">
-        <h1 className="text-2xl font-bold">Merhaba, Senarist!</h1>
-        <p className="text-[#7a5c36]">
-          Senaryo yolculuğuna hoş geldin. Aşağıdan son durumu inceleyebilirsin
-          👇
-        </p>
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Merhaba, Senarist!</h1>
+            <p className="text-[#7a5c36]">
+              Senaryo yolculuğuna hoş geldin. Aşağıdan son durumu
+              inceleyebilirsin 👇
+            </p>
+          </div>
+          <Link href="/dashboard/writer/messages" className="btn btn-primary">
+            💬 Mesajlara Git
+          </Link>
+        </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
-          {/* Senaryo Sayısı */}
+        {errorMessage && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
+
+        <div className="grid gap-6 md:grid-cols-3">
           <div className="card">
-            <h2 className="text-lg font-semibold mb-2">
-              📄 Yüklediğin Senaryolar
-            </h2>
-            <p className="text-3xl font-bold text-[#0e5b4a]">3</p>
+            <h2 className="mb-2 text-lg font-semibold">📄 Yüklediğin Senaryolar</h2>
+            <p className="text-3xl font-bold text-[#0e5b4a]">
+              {loadingScripts ? 'Yükleniyor…' : scriptCount}
+            </p>
           </div>
 
-          {/* Talepler */}
           <div className="card">
-            <h2 className="text-lg font-semibold mb-2">📩 Yapımcı Talepleri</h2>
-            <p className="text-3xl font-bold text-[#ffaa06]">1</p>
+            <h2 className="mb-2 text-lg font-semibold">📩 Yapımcı Talepleri</h2>
+            <p className="text-3xl font-bold text-[#ffaa06]">
+              {loadingApplications ? 'Yükleniyor…' : applications.length}
+            </p>
           </div>
 
-          {/* Üyelik Durumu */}
           <div className="card">
-            <h2 className="text-lg font-semibold mb-2">💳 Üyelik Planın</h2>
+            <h2 className="mb-2 text-lg font-semibold">💳 Üyelik Planın</h2>
             <p className="text-xl font-bold text-[#7a5c36]">Pro</p>
             <p className="text-sm text-[#7a5c36]">
               Sonraki yenileme: 31 Ağustos 2025
             </p>
           </div>
 
-          {/* Satış Adedi */}
           <div className="card">
-            <h2 className="text-lg font-semibold mb-2">🛒 Satış Adedi</h2>
+            <h2 className="mb-2 text-lg font-semibold">🛒 Satış Adedi</h2>
             <p className="text-3xl font-bold text-[#0e5b4a]">
-              {loadingSales ? 'Yükleniyor…' : (salesCount ?? 0)}
+              {loadingScripts ? 'Yükleniyor…' : totalSalesCount}
             </p>
             <p className="text-sm text-[#7a5c36]">
               Onaylanmış siparişlerden toplam adet.
             </p>
           </div>
 
-          {/* Toplam Gelir */}
           <div className="card">
-            <h2 className="text-lg font-semibold mb-2">💰 Toplam Gelir</h2>
+            <h2 className="mb-2 text-lg font-semibold">💰 Toplam Gelir</h2>
             <p className="text-3xl font-bold text-[#0e5b4a]">
-              {loadingSales ? 'Yükleniyor…' : formatCurrency(totalRevenueCents)}
+              {loadingScripts ? 'Yükleniyor…' : formatCurrency(totalRevenueCents)}
             </p>
             <p className="text-sm text-[#7a5c36]">
               Satışlar sonrası elde edilen toplam tutar.
             </p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="card overflow-hidden p-0">
+            <div className="border-b border-[#f0e6da] bg-[#f9f4ee] px-6 py-4">
+              <h2 className="text-lg font-semibold text-[#4a3d2f]">
+                Senaryo Satış Performansı
+              </h2>
+              <p className="text-sm text-[#7a5c36]">
+                Satış adetleri ve gelirlerini senaryo bazında incele.
+              </p>
+            </div>
+            {loadingScripts ? (
+              <p className="px-6 py-4 text-sm text-gray-500">Yükleniyor...</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-[#f0e6da] text-sm">
+                  <thead className="bg-[#fbf7f2] text-left text-xs uppercase tracking-wider text-[#7a5c36]">
+                    <tr>
+                      <th className="px-6 py-3 font-semibold">Senaryo</th>
+                      <th className="px-6 py-3 font-semibold">Fiyat</th>
+                      <th className="px-6 py-3 font-semibold">Satış</th>
+                      <th className="px-6 py-3 font-semibold">Gelir</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#f0e6da] text-[#4a3d2f]">
+                    {scriptStats.length === 0 ? (
+                      <tr>
+                        <td
+                          className="px-6 py-4 text-center text-sm text-gray-500"
+                          colSpan={4}
+                        >
+                          Henüz senaryo performans verisi yok.
+                        </td>
+                      </tr>
+                    ) : (
+                      scriptStats.map((script) => (
+                        <tr key={script.id} className="even:bg-[#fdf9f3]">
+                          <td className="px-6 py-4 font-medium">{script.title}</td>
+                          <td className="px-6 py-4">
+                            {formatCurrency(script.price_cents)}
+                          </td>
+                          <td className="px-6 py-4">{script.salesCount}</td>
+                          <td className="px-6 py-4 font-semibold text-[#0e5b4a]">
+                            {formatCurrency(script.revenueCents)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="card">
+            <h2 className="text-lg font-semibold text-[#4a3d2f]">
+              Başvurduğun Yapımcı İlanları
+            </h2>
+            <p className="mb-4 text-sm text-[#7a5c36]">
+              Başvuru durumlarını buradan takip edebilirsin.
+            </p>
+            {loadingApplications ? (
+              <p className="text-sm text-gray-500">Yükleniyor...</p>
+            ) : applications.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Henüz bir ilana başvuru yapmadın.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {applications.map((application) => (
+                  <li
+                    key={application.id}
+                    className="rounded-lg border border-[#f0e6da] bg-[#fbf7f2] px-4 py-3"
+                  >
+                    <p className="font-medium text-[#4a3d2f]">
+                      {application.listingTitle}
+                    </p>
+                    <p className="text-sm text-[#7a5c36]">
+                      Durum: {getStatusLabel(application.status)}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </div>
