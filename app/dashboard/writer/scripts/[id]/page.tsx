@@ -10,7 +10,10 @@ type Script = {
   genre: string;
   length: number; // Supabase alanı
   synopsis: string; // Supabase alanı
-  user_id: string;
+  description: string | null;
+  price_cents: number | null;
+  owner_id: string;
+  created_at: string;
 };
 
 export default function ScriptDetailPage() {
@@ -27,7 +30,9 @@ export default function ScriptDetailPage() {
   const fetchScript = async () => {
     const { data, error } = await supabase
       .from('scripts')
-      .select('*')
+      .select(
+        'id, title, genre, length, synopsis, description, price_cents, owner_id, created_at'
+      )
       .eq('id', id)
       .single();
 
@@ -50,6 +55,12 @@ export default function ScriptDetailPage() {
         Tür: {script.genre} &middot; Süre: {script.length} dakika
       </p>
       <p className="text-[#4a3d2f] whitespace-pre-line">{script.synopsis}</p>
+      {script.description && (
+        <p className="text-[#4a3d2f] whitespace-pre-line">{script.description}</p>
+      )}
+      <p className="text-[#4a3d2f] font-semibold">
+        ₺{((script.price_cents ?? 0) / 100).toFixed(2)}
+      </p>
 
       <div className="flex gap-2 mt-6">
         <button
