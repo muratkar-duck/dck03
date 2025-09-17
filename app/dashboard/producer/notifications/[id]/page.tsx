@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -10,9 +10,9 @@ type Row = {
   id: string;
   created_at: string;
   status: string;
-  script?: { id: string; title: string }[] | null;
-  request?: { id: string; title: string }[] | null;
-  writer?: { id: string; email: string | null }[] | null;
+  script?: { id: string; title: string } | null;
+  listing?: { id: string; title: string | null } | null;
+  writerEmail?: string | null;
 };
 
 export default function ProducerNotificationDetailPage() {
@@ -32,19 +32,55 @@ export default function ProducerNotificationDetailPage() {
             id,
             request_id,
             listing_id,
+            producer_listing_id,
             writer_id,
             script_id,
             status,
             created_at,
             script:scripts ( id, title, genre, length, price_cents, created_at ),
-            request:requests ( id, title, genre, length, created_at ),
             writer:users ( id, email )
           `
         )
         .eq('id', id)
         .maybeSingle();
 
-      if (!error) setRow(data as Row);
+      if (!error && data) {
+        const scriptData = Array.isArray(data.script) ? data.script[0] : data.script;
+        const writerData = Array.isArray(data.writer) ? data.writer[0] : data.writer;
+
+        const listingId =
+          data.producer_listing_id || data.listing_id || data.request_id;
+
+        let listing: Row['listing'] = null;
+
+        if (listingId) {
+          const { data: listingData, error: listingError } = await supabase
+            .from('v_listings_unified')
+            .select('id, title')
+            .eq('id', listingId)
+            .maybeSingle();
+
+          if (listingError) {
+            console.error('İlan verisi yüklenemedi:', listingError.message);
+          } else if (listingData) {
+            listing = {
+              id: String(listingData.id),
+              title: listingData.title ?? null,
+            };
+          }
+        }
+
+        setRow({
+          id: data.id,
+          status: data.status,
+          created_at: data.created_at,
+          script: scriptData
+            ? { id: String(scriptData.id), title: scriptData.title ?? '—' }
+            : null,
+          listing,
+          writerEmail: writerData?.email ?? null,
+        });
+      }
       setLoading(false);
     };
 
@@ -84,13 +120,13 @@ export default function ProducerNotificationDetailPage() {
         ) : (
           <div className="card space-y-2">
             <p>
-              <strong>Yazar:</strong> {row.writer?.[0]?.email || '—'}
+              <strong>Yazar:</strong> {row.writerEmail || '—'}
             </p>
             <p>
-              <strong>Senaryo:</strong> {row.script?.[0]?.title || '—'}
+              <strong>Senaryo:</strong> {row.script?.title || '—'}
             </p>
             <p>
-              <strong>İlan:</strong> {row.request?.[0]?.title || '—'}
+              <strong>İlan:</strong> {row.listing?.title || '—'}
             </p>
             <p className="text-xs text-[#a38d6d]">
               {new Date(row.created_at).toLocaleString('tr-TR')} ·{' '}
@@ -105,9 +141,11 @@ export default function ProducerNotificationDetailPage() {
                 💬 Sohbeti Aç
               </Link>
               <Link
-                href={`/dashboard/producer/requests/${
-                  row.request?.[0]?.id || ''
-                }`}
+                href={
+                  row.listing?.id
+                    ? `/dashboard/producer/listings/${row.listing.id}`
+                    : '/dashboard/producer/listings'
+                }
                 className="btn btn-secondary"
               >
                 📄 İlana Git

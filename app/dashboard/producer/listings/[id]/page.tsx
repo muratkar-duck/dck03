@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { supabase } from '@/lib/supabaseClient';
-import type { ProducerListing } from '@/types/db';
+import type { Listing } from '@/types/db';
 
 type ApplicationRow = {
   id: string;
@@ -38,9 +38,16 @@ const dateTimeFormatter = new Intl.DateTimeFormat('tr-TR', {
   timeStyle: 'short',
 });
 
+const budgetLabel = (budgetCents: number | null | undefined) => {
+  if (typeof budgetCents === 'number') {
+    return currencyFormatter.format(budgetCents / 100);
+  }
+  return 'Belirtilmemiş';
+};
+
 export default function ProducerListingDetailPage() {
   const { id: listingId } = useParams<{ id: string }>();
-  const [listing, setListing] = useState<ProducerListing | null>(null);
+  const [listing, setListing] = useState<Listing | null>(null);
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +55,8 @@ export default function ProducerListingDetailPage() {
 
   useEffect(() => {
     if (!listingId) return;
+
+    let isMounted = true;
 
     const loadData = async () => {
       setLoading(true);
@@ -69,12 +78,12 @@ export default function ProducerListingDetailPage() {
         }
 
         const { data: listingData, error: listingError } = await supabase
-          .from('producer_listings')
+          .from('v_listings_unified')
           .select(
-            'id, owner_id, title, description, genre, budget_cents, created_at'
+            'id, owner_id, title, description, genre, budget_cents, created_at, source'
           )
           .eq('id', listingId)
-          .single();
+          .maybeSingle();
 
         if (listingError) {
           throw new Error(listingError.message);
@@ -88,35 +97,25 @@ export default function ProducerListingDetailPage() {
           throw new Error('Bu ilana erişim yetkiniz yok.');
         }
 
-        setListing(listingData as ProducerListing);
+        if (!isMounted) return;
 
-        const baseSelect = `
+        setListing(listingData as Listing);
+
+        const { data: applicationRows, error: applicationsError } = await supabase
+          .from('applications')
+          .select(`
             id,
+            owner_id,
             status,
             created_at,
             script:scripts ( id, title, genre, length, price_cents, created_at ),
             writer:users ( id, email )
-          `;
-
-        const firstResponse = await supabase
-          .from('applications')
-          .select(baseSelect)
-          .eq('producer_listing_id', listingId)
+          `)
+          .eq('owner_id', user.id)
+          .or(
+            `producer_listing_id.eq.${listingId},listing_id.eq.${listingId},request_id.eq.${listingId}`
+          )
           .order('created_at', { ascending: false });
-
-        let applicationRows = firstResponse.data;
-        let applicationsError = firstResponse.error;
-
-        if (applicationsError) {
-          const fallbackResponse = await supabase
-            .from('applications')
-            .select(baseSelect)
-            .eq('listing_id', listingId)
-            .order('created_at', { ascending: false });
-
-          applicationRows = fallbackResponse.data;
-          applicationsError = fallbackResponse.error;
-        }
 
         if (applicationsError) {
           setError(applicationsError.message);
@@ -160,9 +159,11 @@ export default function ProducerListingDetailPage() {
           };
         });
 
+        if (!isMounted) return;
         setApplications(formatted);
       } catch (err) {
         console.error(err);
+        if (!isMounted) return;
         const message =
           err instanceof Error
             ? err.message
@@ -171,11 +172,17 @@ export default function ProducerListingDetailPage() {
         setListing(null);
         setApplications([]);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [listingId]);
 
   const handleDecision = async (
@@ -271,17 +278,14 @@ export default function ProducerListingDetailPage() {
             <div className="space-y-3">
               <h1 className="text-2xl font-bold text-[#0e5b4a]">{listing.title}</h1>
               <p className="text-sm text-[#7a5c36]">
-                Tür: {listing.genre} · Bütçe:{' '}
-                {currencyFormatter.format(listing.budget_cents / 100)}
+                Tür: {listing.genre} · Bütçe: {budgetLabel(listing.budget_cents)}
               </p>
               <p className="text-xs text-[#a38d6d]">
                 Oluşturulma tarihi: {dateFormatter.format(new Date(listing.created_at))}
               </p>
-              {listing.description && (
-                <p className="text-sm text-[#4f3d2a] whitespace-pre-wrap">
-                  {listing.description}
-                </p>
-              )}
+              <p className="text-sm text-[#4f3d2a] whitespace-pre-wrap">
+                {listing.description || 'Açıklama bulunamadı.'}
+              </p>
             </div>
 
             <section className="space-y-4">
@@ -314,13 +318,10 @@ export default function ProducerListingDetailPage() {
                             Yazar: {app.writer?.email ?? 'Bilinmiyor'}
                           </p>
                           <p className="text-sm text-[#7a5c36]">
-                            Tür: {app.script?.genre ?? '—'} · Süre:{' '}
-                            {app.script?.length ?? '—'} · Fiyat:{' '}
-                            {formatPrice(app.script?.price_cents)}
+                            Tür: {app.script?.genre ?? '—'} · Süre: {app.script?.length ?? '—'} · Fiyat: {formatPrice(app.script?.price_cents)}
                           </p>
                           <p className="text-xs text-[#a38d6d]">
-                            Başvuru tarihi:{' '}
-                            {dateTimeFormatter.format(new Date(app.created_at))}
+                            Başvuru tarihi: {dateTimeFormatter.format(new Date(app.created_at))}
                           </p>
                         </div>
                         {getStatusBadge(app.status)}

@@ -9,14 +9,15 @@ type Application = {
   id: string;
   status: string;
   created_at: string;
-  requests: {
+  listing?: {
     id: string;
-    title: string;
-    producer_name: string;
-  };
+    title: string | null;
+    source?: string | null;
+  } | null;
   scripts: {
     title: string;
   };
+  producerEmail?: string | null;
 };
 
 export default function WriterSuggestionHistoryPage() {
@@ -45,13 +46,6 @@ export default function WriterSuggestionHistoryPage() {
           script_id,
           status,
           created_at,
-          requests!inner (
-            id,
-            title,
-            genre,
-            length,
-            created_at
-          ),
           scripts!inner (
             id,
             title,
@@ -60,7 +54,7 @@ export default function WriterSuggestionHistoryPage() {
             price_cents,
             created_at
           ),
-          producer:users!applications_producer_id_fkey (
+          producer:users!applications_owner_id_fkey (
             email
           )
         `
@@ -71,8 +65,65 @@ export default function WriterSuggestionHistoryPage() {
     if (error) {
       console.error('Başvurular çekilirken hata:', error.message);
     } else {
-      const rows = ((data ?? []) as unknown) as Application[];
-      setApplications(rows);
+      const rows = ((data ?? []) as unknown) as Array<any>;
+
+      const listingIds = Array.from(
+        new Set(
+          rows
+            .map(
+              (row) =>
+                row.producer_listing_id || row.listing_id || row.request_id
+            )
+            .filter((value): value is string => Boolean(value))
+        )
+      );
+
+      let listingsMap = new Map<string, { id: string; title: string | null; source?: string | null }>();
+
+      if (listingIds.length > 0) {
+        const { data: listingsData, error: listingsError } = await supabase
+          .from('v_listings_unified')
+          .select('id, title, source')
+          .in('id', listingIds);
+
+        if (listingsError) {
+          console.error('İlan bilgileri yüklenemedi:', listingsError.message);
+        } else {
+          listingsMap = new Map(
+            (listingsData ?? []).map((listing: any) => [
+              String(listing.id),
+              {
+                id: String(listing.id),
+                title: listing.title ?? null,
+                source: listing.source ?? null,
+              },
+            ])
+          );
+        }
+      }
+
+      const normalized: Application[] = rows.map((row) => {
+        const listingId =
+          row.producer_listing_id || row.listing_id || row.request_id;
+
+        const producerData = Array.isArray(row.producer)
+          ? row.producer[0]
+          : row.producer;
+        const scriptData = Array.isArray(row.scripts)
+          ? row.scripts[0]
+          : row.scripts;
+
+        return {
+          id: row.id,
+          status: row.status,
+          created_at: row.created_at,
+          listing: listingId ? listingsMap.get(String(listingId)) ?? null : null,
+          scripts: scriptData || { title: '—' },
+          producerEmail: producerData?.email ?? null,
+        };
+      });
+
+      setApplications(normalized);
     }
 
     setLoading(false);
@@ -127,8 +178,8 @@ export default function WriterSuggestionHistoryPage() {
                     {a.scripts?.title || 'Bilinmeyen Senaryo'}
                   </h2>
                   <p className="text-sm text-[#7a5c36]">
-                    İlan: <strong>{a.requests?.title || '-'}</strong> <br />
-                    Yapımcı: {(a as any).producer?.email || '-'}
+                    İlan: <strong>{a.listing?.title || '-'}</strong> <br />
+                    Yapımcı: {a.producerEmail || '-'}
                   </p>
                 </div>
                 <div className="text-right space-y-1">
@@ -140,7 +191,13 @@ export default function WriterSuggestionHistoryPage() {
               </div>
 
               <div className="flex gap-3 pt-3">
-                <Link href={`/dashboard/writer/requests/${a.requests?.id}`}>
+                <Link
+                  href={
+                    a.listing?.id
+                      ? `/dashboard/writer/listings/${a.listing.id}`
+                      : '/dashboard/writer/listings'
+                  }
+                >
                   <span className="btn btn-secondary">İlana Git</span>
                 </Link>
               </div>
