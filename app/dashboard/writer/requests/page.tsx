@@ -31,7 +31,7 @@ export default function WriterRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [selectedScriptId, setSelectedScriptId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [writerId, setWriterId] = useState<string | null>(null);
 
   const router = useRouter();
 
@@ -45,7 +45,7 @@ export default function WriterRequestsPage() {
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    setUserId(user.id);
+    setWriterId(user.id);
 
     // Talepleri çek
     const { data: reqData } = await supabase
@@ -100,7 +100,7 @@ export default function WriterRequestsPage() {
   };
 
   const handleApply = async () => {
-    if (!selectedRequest || !selectedScriptId || !userId) return;
+    if (!selectedRequest || !selectedScriptId || !writerId) return;
 
     // İlan sahibinin (producer) id'sini çek
     const { data: reqDetails } = await supabase
@@ -118,7 +118,7 @@ export default function WriterRequestsPage() {
       {
         request_id: selectedRequest.id,
         script_id: selectedScriptId,
-        writer_id: userId,
+        writer_id: writerId,
         producer_id: reqDetails.producer_id,
         status: 'pending',
       },
