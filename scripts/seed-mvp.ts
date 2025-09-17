@@ -380,6 +380,28 @@ async function ensureMessage(
   return (data as { id: string }).id;
 }
 
+async function ensureConversationParticipant(
+  client: SupabaseClient,
+  params: { conversationId: string; userId: string; role: Role }
+) {
+  const { error } = await client
+    .from('conversation_participants')
+    .upsert(
+      [
+        {
+          conversation_id: params.conversationId,
+          user_id: params.userId,
+          role: params.role,
+        },
+      ],
+      { onConflict: 'conversation_id,user_id' }
+    );
+
+  if (error) {
+    throw error;
+  }
+}
+
 async function main() {
   console.log('🌱 Seeding MVP demo data...');
 
@@ -458,6 +480,20 @@ async function main() {
 
   const conversationId = await ensureConversation(adminClient, applicationId);
   console.log('✔ Conversation ready');
+
+  await ensureConversationParticipant(adminClient, {
+    conversationId,
+    userId: producer.id,
+    role: 'producer',
+  });
+
+  await ensureConversationParticipant(adminClient, {
+    conversationId,
+    userId: writer.id,
+    role: 'writer',
+  });
+
+  console.log('✔ Conversation participants ready');
 
   const openListingSeed: ListingSeed = {
     title: 'Belgesel Ortak Yapım İlanı',
