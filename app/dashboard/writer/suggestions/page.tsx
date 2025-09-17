@@ -71,7 +71,8 @@ export default function WriterSuggestionHistoryPage() {
     if (error) {
       console.error('Başvurular çekilirken hata:', error.message);
     } else {
-      setApplications(data || []);
+      const rows = ((data ?? []) as unknown) as Application[];
+      setApplications(rows);
     }
 
     setLoading(false);

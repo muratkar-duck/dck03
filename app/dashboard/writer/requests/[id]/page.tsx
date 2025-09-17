@@ -5,14 +5,15 @@ import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AuthGuard from '@/components/AuthGuard';
 import Link from 'next/link';
+import { formatMinutes, normalizeMinutes } from '@/lib/duration';
 
 type Request = {
   id: string;
   title: string;
   description: string;
   genre: string;
-  length: string; // duration yerine length
-  budget: string | null;
+  length: number | null; // dakika cinsinden süre
+  budget: number | null;
   created_at: string;
   user_id: string; // ilanı açan yapımcı
   producer_id?: string | null;
@@ -22,7 +23,7 @@ type Script = {
   id: string;
   title: string;
   genre: string;
-  length: string; // duration yerine length
+  length: number | null;
 };
 
 type MyAppRow = {
@@ -60,7 +61,24 @@ export default function WriterRequestDetailPage() {
       .single();
 
     if (!error && data) {
-      setRequest(data);
+      const formatted: Request = {
+        id: data.id,
+        title: data.title,
+        description: data.description ?? '',
+        genre: data.genre,
+        length: normalizeMinutes(data.length),
+        budget:
+          typeof data.budget === 'number'
+            ? data.budget
+            : data.budget != null
+            ? Number(data.budget)
+            : null,
+        created_at: data.created_at,
+        user_id: data.user_id,
+        producer_id: data.producer_id ?? null,
+      };
+
+      setRequest(formatted);
     }
     setLoading(false);
   };
@@ -77,7 +95,14 @@ export default function WriterRequestDetailPage() {
       .eq('owner_id', user.id);
 
     if (!error && data) {
-      setScripts(data as Script[]);
+      const formatted: Script[] = (data as any[]).map((script) => ({
+        id: script.id,
+        title: script.title,
+        genre: script.genre ?? '',
+        length: normalizeMinutes(script.length),
+      }));
+
+      setScripts(formatted);
     }
   };
 
@@ -156,8 +181,10 @@ export default function WriterRequestDetailPage() {
         <h1 className="text-2xl font-bold">{request.title}</h1>
         <p className="text-[#7a5c36]">{request.description}</p>
         <p className="text-sm text-gray-600">
-          Tür: {request.genre} · Süre: {request.length}{' '}
-          {request.budget && <>· Bütçe: {request.budget}</>}
+          Tür: {request.genre} · Süre: {formatMinutes(request.length)}{' '}
+          {request.budget != null && (
+            <>· Bütçe: ₺{request.budget.toLocaleString('tr-TR')}</>
+          )}
         </p>
         <p className="text-xs text-gray-400">
           Yayınlanma: {new Date(request.created_at).toLocaleDateString('tr-TR')}
@@ -227,7 +254,7 @@ export default function WriterRequestDetailPage() {
               <option value="">-- Senaryo Seçin --</option>
               {eligibleScripts.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.title} ({s.genre}, {s.length})
+                  {s.title} ({s.genre}, {formatMinutes(s.length, '—')})
                 </option>
               ))}
             </select>
