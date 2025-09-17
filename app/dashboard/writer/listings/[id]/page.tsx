@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import type { ProducerListing } from '@/types/db';
@@ -8,6 +8,7 @@ import type { ProducerListing } from '@/types/db';
 type WriterScriptOption = {
   id: string;
   title: string;
+  genre: string | null;
 };
 
 type ListingApplication = {
@@ -82,12 +83,6 @@ export default function ListingDetailPage() {
       } else {
         const typedScripts = (scriptData as WriterScriptOption[]) || [];
         setScripts(typedScripts);
-        setSelectedScript((prev) => {
-          if (prev && typedScripts.some((script) => script.id === prev)) {
-            return prev;
-          }
-          return typedScripts[0]?.id ?? '';
-        });
       }
 
       const { data: appData, error: appError } = await supabase
@@ -113,6 +108,33 @@ export default function ListingDetailPage() {
     fetchWriterResources();
   }, [id]);
 
+  const matchingScripts = useMemo(() => {
+    if (!listing) return [] as WriterScriptOption[];
+
+    const listingGenre = listing.genre?.trim().toLowerCase() ?? '';
+
+    return scripts.filter((script) => {
+      const scriptGenre = script.genre?.trim().toLowerCase() ?? '';
+      return scriptGenre === listingGenre;
+    });
+  }, [listing, scripts]);
+
+  useEffect(() => {
+    if (!listing) return;
+
+    setSelectedScript((prev) => {
+      if (existingApplication) {
+        return prev;
+      }
+
+      if (prev && matchingScripts.some((script) => script.id === prev)) {
+        return prev;
+      }
+
+      return matchingScripts[0]?.id ?? '';
+    });
+  }, [listing, matchingScripts, existingApplication]);
+
   const handleApply = async () => {
     if (!selectedScript) {
       alert('Lütfen bir senaryo seçin.');
@@ -120,6 +142,26 @@ export default function ListingDetailPage() {
     }
 
     if (existingApplication || submitting) return;
+
+    if (!listing) {
+      alert('İlan bilgisi alınamadı.');
+      return;
+    }
+
+    const listingGenre = listing.genre?.trim().toLowerCase() ?? '';
+    const selectedScriptDetails = scripts.find(
+      (script) => script.id === selectedScript,
+    );
+
+    if (
+      selectedScriptDetails &&
+      (selectedScriptDetails.genre?.trim().toLowerCase() ?? '') !== listingGenre
+    ) {
+      alert(
+        'Seçtiğiniz senaryo bu ilanla aynı türde değil. Lütfen uygun türde bir senaryo seçin.',
+      );
+      return;
+    }
 
     setSubmitting(true);
 
@@ -137,6 +179,36 @@ export default function ListingDetailPage() {
 
     if (!user) {
       alert('Kullanıcı bulunamadı.');
+      setSubmitting(false);
+      return;
+    }
+
+    const { data: scriptRow, error: scriptRowError } = await supabase
+      .from('scripts')
+      .select('id, genre')
+      .eq('id', selectedScript)
+      .eq('owner_id', user.id)
+      .single();
+
+    if (scriptRowError) {
+      console.error(scriptRowError.message);
+      alert('Senaryo bilgisi doğrulanamadı: ' + scriptRowError.message);
+      setSubmitting(false);
+      return;
+    }
+
+    if (!scriptRow) {
+      alert('Seçtiğiniz senaryo bulunamadı.');
+      setSubmitting(false);
+      return;
+    }
+
+    const scriptGenre = scriptRow?.genre?.trim().toLowerCase() ?? '';
+
+    if (scriptGenre !== listingGenre) {
+      alert(
+        'Seçtiğiniz senaryo bu ilanla aynı türde değil. Lütfen uygun türde bir senaryo seçin.',
+      );
       setSubmitting(false);
       return;
     }
@@ -183,12 +255,17 @@ export default function ListingDetailPage() {
             className="w-full p-2 border rounded-lg bg-white"
             value={selectedScript}
             onChange={(event) => setSelectedScript(event.target.value)}
-            disabled={!!existingApplication || scripts.length === 0 || submitting}
+            disabled={
+              !!existingApplication ||
+              submitting ||
+              scripts.length === 0 ||
+              matchingScripts.length === 0
+            }
           >
             <option value="" disabled>
               Bir senaryo seçin
             </option>
-            {scripts.map((script) => (
+            {matchingScripts.map((script) => (
               <option key={script.id} value={script.id}>
                 {script.title}
               </option>
@@ -199,11 +276,19 @@ export default function ListingDetailPage() {
               Henüz kaydedilmiş bir senaryon bulunmuyor.
             </p>
           )}
+          {scripts.length > 0 && matchingScripts.length === 0 && (
+            <p className="text-xs text-[#a38d6d]">
+              Bu ilanın türüyle eşleşen kayıtlı bir senaryon bulunmuyor.
+            </p>
+          )}
           <button
             className="btn btn-primary"
             onClick={handleApply}
             disabled={
-              !!existingApplication || !selectedScript || submitting || scripts.length === 0
+              !!existingApplication ||
+              !selectedScript ||
+              submitting ||
+              matchingScripts.length === 0
             }
           >
             {submitting ? 'Gönderiliyor...' : 'Senaryomla Başvur'}
