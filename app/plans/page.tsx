@@ -1,68 +1,70 @@
+'use client';
+
+import Link from 'next/link';
+import { usePlanData } from '@/hooks/usePlanData';
+
 export default function PlansPage() {
+  const { plans, selection, loading, isAuthenticated } = usePlanData();
+  const activePlanId = selection?.planId;
+
   return (
     <div className="space-y-10 max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold text-center">Üyelik Planlarımız</h1>
-      <p className="text-center text-[#7a5c36]">
-        Ducktylo platformunda senaryonuzu hayata geçirmenize yardımcı olacak
-        farklı üyelik seviyeleri sunuyoruz.
-      </p>
-
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Student Plan */}
-        <div className="card space-y-2">
-          <h2 className="text-xl font-semibold">🎓 Student</h2>
-          <p className="text-sm">
-            Sadece <strong>@edu.tr</strong> e-postaları için geçerlidir.
+      <header className="space-y-4 text-center">
+        <h1 className="text-3xl font-bold">Üyelik Planlarımız</h1>
+        <p className="text-[#7a5c36]">
+          Ducktylo platformunda senaryonuzu hayata geçirmenize yardımcı olacak farklı
+          üyelik seviyeleri sunuyoruz.
+        </p>
+        {isAuthenticated && (
+          <p className="text-sm text-[#7a5c36]">
+            Aktif planın vurgulanmıştır, dilersen diğer seçenekleri buradan
+            karşılaştırabilirsin.
           </p>
-          <ul className="text-sm list-disc list-inside text-[#7a5c36] space-y-1 mt-2">
-            <li>Aylık 1 senaryo yükleme</li>
-            <li>Temel erişim</li>
-            <li>Özgeçmiş oluşturma</li>
-          </ul>
-          <p className="font-bold text-[#ffaa06]">₺0 / ₺49</p>
-        </div>
+        )}
+      </header>
 
-        {/* Basic Plan */}
-        <div className="card space-y-2">
-          <h2 className="text-xl font-semibold">📝 Basic</h2>
-          <p className="text-sm">Yeni başlayan senaristler için</p>
-          <ul className="text-sm list-disc list-inside text-[#7a5c36] space-y-1 mt-2">
-            <li>2 senaryo yükleme</li>
-            <li>Temel filtreleme erişimi</li>
-            <li>Mesajlaşma sistemi</li>
-          </ul>
-          <p className="font-bold text-[#ffaa06]">₺149 / ay</p>
-        </div>
+      {loading && isAuthenticated ? (
+        <p className="text-center text-[#7a5c36]">Plan bilgilerin yükleniyor...</p>
+      ) : (
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {plans.map((plan) => {
+            const isActive = isAuthenticated && plan.id === activePlanId;
 
-        {/* Pro Plan */}
-        <div className="card space-y-2">
-          <h2 className="text-xl font-semibold">💼 Pro</h2>
-          <p className="text-sm">Düzenli senaryo üretenler için</p>
-          <ul className="text-sm list-disc list-inside text-[#7a5c36] space-y-1 mt-2">
-            <li>5 senaryo</li>
-            <li>Vitrin görünürlüğü</li>
-            <li>Temsiliyet & danışmanlık</li>
-          </ul>
-          <p className="font-bold text-[#ffaa06]">₺299 / ay</p>
+            return (
+              <article
+                key={plan.id}
+                className={`card space-y-2 transition-shadow ${
+                  isActive ? 'ring-2 ring-[#ffaa06] shadow-lg' : ''
+                }`}
+                aria-current={isActive ? 'true' : undefined}
+              >
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-semibold">
+                    <span aria-hidden>{plan.icon}</span> {plan.name}
+                  </h2>
+                  {isActive && (
+                    <span className="inline-flex items-center rounded-full bg-[#ffaa06]/10 px-2 py-0.5 text-xs font-semibold text-[#ffaa06]">
+                      Aktif Planın
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm">{plan.tagline}</p>
+                <ul className="text-sm list-disc list-inside text-[#7a5c36] space-y-1 mt-2">
+                  {plan.features.map((feature) => (
+                    <li key={feature}>{feature}</li>
+                  ))}
+                </ul>
+                <p className="font-bold text-[#ffaa06]">{plan.price}</p>
+              </article>
+            );
+          })}
         </div>
-
-        {/* Top Tier Plan */}
-        <div className="card space-y-2">
-          <h2 className="text-xl font-semibold">🌟 Top Tier</h2>
-          <p className="text-sm">Sektörün profesyonelleri için</p>
-          <ul className="text-sm list-disc list-inside text-[#7a5c36] space-y-1 mt-2">
-            <li>Sınırsız senaryo</li>
-            <li>Öne çıkma</li>
-            <li>Öncelikli destek</li>
-          </ul>
-          <p className="font-bold text-[#ffaa06]">₺499 / ay</p>
-        </div>
-      </div>
+      )}
 
       <div className="text-center mt-6">
-        <a href="/auth/sign-up-writer" className="btn btn-primary">
+        <Link href="/auth/sign-up-writer" className="btn btn-primary">
           Ücretsiz Başla
-        </a>
+        </Link>
       </div>
     </div>
   );
