@@ -5,16 +5,18 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import AuthGuard from '@/components/AuthGuard';
 import Link from 'next/link';
+import { formatMinutes, normalizeMinutes } from '@/lib/duration';
 
 type Request = {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   genre: string;
-  length: string;
-  budget: string | null;
+  length: number | null;
+  budget: number | null;
   created_at: string;
   user_id: string; // ilanı açan yapımcı
+  producer_id?: string | null;
 };
 
 type Application = {
@@ -57,7 +59,24 @@ export default function ProducerRequestDetailPage() {
       .single();
 
     if (!error && data) {
-      setRequest(data);
+      const formatted: Request = {
+        id: data.id,
+        title: data.title,
+        description: data.description ?? null,
+        genre: data.genre,
+        length: normalizeMinutes(data.length),
+        budget:
+          typeof data.budget === 'number'
+            ? data.budget
+            : data.budget != null
+            ? Number(data.budget)
+            : null,
+        created_at: data.created_at,
+        user_id: data.user_id,
+        producer_id: data.producer_id ?? null,
+      };
+
+      setRequest(formatted);
     }
     setLoading(false);
   };
@@ -90,12 +109,7 @@ export default function ProducerRequestDetailPage() {
             script !== null
               ? {
                   ...script,
-                  length:
-                    typeof script.length === 'number'
-                      ? script.length
-                      : script.length != null
-                      ? Number(script.length)
-                      : null,
+                  length: normalizeMinutes(script.length),
                   price_cents:
                     typeof script.price_cents === 'number'
                       ? script.price_cents
@@ -201,8 +215,10 @@ export default function ProducerRequestDetailPage() {
         <h1 className="text-2xl font-bold">{request.title}</h1>
         <p className="text-[#7a5c36]">{request.description}</p>
         <p className="text-sm text-gray-600">
-          Tür: {request.genre} · Süre: {request.length}{' '}
-          {request.budget && <>· Bütçe: {request.budget}</>}
+          Tür: {request.genre} · Süre: {formatMinutes(request.length)}{' '}
+          {request.budget != null && (
+            <>· Bütçe: ₺{request.budget.toLocaleString('tr-TR')}</>
+          )}
         </p>
         <p className="text-xs text-gray-400">
           Yayınlanma: {new Date(request.created_at).toLocaleDateString('tr-TR')}
@@ -224,7 +240,7 @@ export default function ProducerRequestDetailPage() {
                   <p className="text-sm text-gray-600">
                     Yazar: {app.writer?.email || 'Bilinmiyor'} · Tür:{' '}
                     {app.script?.genre || '—'} · Süre:{' '}
-                    {app.script?.length ?? '—'} · Fiyat:{' '}
+                    {formatMinutes(app.script?.length ?? null, '—')} · Fiyat:{' '}
                     {formatPrice(app.script?.price_cents)}
                   </p>
                   <p className="text-xs text-gray-400 flex items-center gap-2">

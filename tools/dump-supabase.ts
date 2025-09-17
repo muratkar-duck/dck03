@@ -59,7 +59,8 @@ if (proxyUrl) {
   setGlobalDispatcher(new ProxyAgent(proxyUrl));
 }
 
-const fetchImpl = undiciFetch;
+const fetchImpl: typeof fetch = (input, init) =>
+  (undiciFetch(input as any, init as any) as unknown) as Promise<Response>;
 
 let supabaseUrlGlobal: string | null = null;
 let supabaseKeyGlobal: string | null = null;
@@ -135,7 +136,7 @@ async function fetchAllRows<T>(
       break;
     }
 
-    results.push(...data);
+    results.push(...((data as unknown) as T[]));
 
     if (data.length < PAGE_SIZE) {
       break;

@@ -10,7 +10,7 @@ export default function NewRequestPage() {
 
   const [title, setTitle] = useState('');
   const [genre, setGenre] = useState('');
-  const [length, setLength] = useState('');
+  const [lengthMinutes, setLengthMinutes] = useState('');
   const [budget, setBudget] = useState('');
   const [deadline, setDeadline] = useState('');
   const [description, setDescription] = useState('');
@@ -38,11 +38,17 @@ export default function NewRequestPage() {
 
     if (!userId) return;
 
+    const parsedLength = Number(lengthMinutes);
+    if (!Number.isFinite(parsedLength) || parsedLength <= 0) {
+      alert('Lütfen geçerli bir süre (dakika) girin.');
+      return;
+    }
+
     const { error } = await supabase.from('requests').insert([
       {
         title,
         genre,
-        length,
+        length: parsedLength,
         budget: parseFloat(budget),
         deadline,
         description,
@@ -55,6 +61,7 @@ export default function NewRequestPage() {
     } else {
       alert('✅ İlan başarıyla yayınlandı!');
       router.push('/dashboard/producer/my-requests');
+      setLengthMinutes('');
     }
   };
 
@@ -93,20 +100,22 @@ export default function NewRequestPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Süre/Format</label>
-            <select
+            <label className="block text-sm font-medium mb-1">
+              Süre (dakika)
+            </label>
+            <input
+              type="number"
               className="w-full p-2 border rounded-lg"
-              value={length}
-              onChange={(e) => setLength(e.target.value)}
+              value={lengthMinutes}
+              onChange={(e) => setLengthMinutes(e.target.value)}
+              min={1}
+              step={5}
+              placeholder="Örn. 90"
               required
-            >
-              <option value="">Seçiniz</option>
-              <option>Kısa Film (0-30 dk)</option>
-              <option>Orta Metraj (30-60 dk)</option>
-              <option>Uzun Metraj (60+ dk)</option>
-              <option>Mini Dizi (2-6 bölüm)</option>
-              <option>Dizi (7+ bölüm)</option>
-            </select>
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Dakika cinsinden hedef süreyi girin.
+            </p>
           </div>
 
           <div>
