@@ -146,13 +146,14 @@ export default function ProducerMessagesPage() {
                 price_cents,
                 created_at
               ),
-              listing:producer_listings!inner (
+              listing:v_listings_unified!inner (
                 id,
                 title,
                 owner_id,
                 genre,
                 budget_cents,
-                created_at
+                created_at,
+                source
               ),
               writer:users!inner (
                 id,
@@ -161,7 +162,7 @@ export default function ProducerMessagesPage() {
             )
           `
         )
-        .eq('application.listing.owner_id', user.id)
+        .eq('application.owner_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {

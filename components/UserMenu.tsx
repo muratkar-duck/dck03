@@ -64,11 +64,11 @@ export default function UserMenu() {
                   script_id,
                   status,
                   created_at,
-                  listing:producer_listings!inner (
+                  listing:v_listings_unified!inner (
                     id,
                     owner_id,
                     title,
-                    created_at
+                    source
                   )
                 `,
                 {
@@ -76,7 +76,7 @@ export default function UserMenu() {
                   head: true,
                 }
               )
-              .eq('listing.owner_id', user.id)
+              .eq('owner_id', user.id)
               .eq('status', 'pending');
             setNotifCount(count ?? 0);
           }
@@ -97,17 +97,17 @@ export default function UserMenu() {
                     script_id,
                     status,
                     created_at,
-                    listing:producer_listings!inner (
+                    listing:v_listings_unified!inner (
                       id,
                       owner_id,
                       title,
-                      created_at
+                      source
                     )
                   )
                 `,
                 { count: 'exact', head: true }
               )
-              .eq('application.listing.owner_id', user.id);
+              .eq('application.owner_id', user.id);
             setChatCount(count ?? 0);
           }
         } else if (role === 'writer') {
