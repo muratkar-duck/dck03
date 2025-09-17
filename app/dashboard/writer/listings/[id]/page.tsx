@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import type { Listing } from '@/types/db';
@@ -8,6 +8,7 @@ import type { Listing } from '@/types/db';
 type WriterScriptOption = {
   id: string;
   title: string;
+  genre: string | null;
 };
 
 type ListingApplication = {
@@ -91,17 +92,13 @@ export default function ListingDetailPage() {
       } else {
         const typedScripts = (scriptData as WriterScriptOption[]) || [];
         setScripts(typedScripts);
-        setSelectedScript((prev) => {
-          if (prev && typedScripts.some((script) => script.id === prev)) {
-            return prev;
-          }
-          return typedScripts[0]?.id ?? '';
-        });
       }
 
       const { data: appData, error: appError } = await supabase
         .from('applications')
-        .select('id, listing_id, producer_listing_id, request_id, writer_id, script_id, status, created_at')
+        .select(
+          'id, listing_id, producer_listing_id, request_id, writer_id, script_id, status, created_at'
+        )
         .eq('writer_id', user.id)
         .or(
           `listing_id.eq.${id},producer_listing_id.eq.${id},request_id.eq.${id}`
@@ -127,6 +124,33 @@ export default function ListingDetailPage() {
     fetchWriterResources();
   }, [id]);
 
+  const matchingScripts = useMemo(() => {
+    if (!listing) return [] as WriterScriptOption[];
+
+    const listingGenre = listing.genre?.trim().toLowerCase() ?? '';
+
+    return scripts.filter((script) => {
+      const scriptGenre = script.genre?.trim().toLowerCase() ?? '';
+      return scriptGenre === listingGenre;
+    });
+  }, [listing, scripts]);
+
+  useEffect(() => {
+    if (!listing) return;
+
+    setSelectedScript((prev) => {
+      if (existingApplication) {
+        return prev;
+      }
+
+      if (prev && matchingScripts.some((script) => script.id === prev)) {
+        return prev;
+      }
+
+      return matchingScripts[0]?.id ?? '';
+    });
+  }, [listing, matchingScripts, existingApplication]);
+
   const handleApply = async () => {
     if (!selectedScript) {
       alert('Lütfen bir senaryo seçin.');
@@ -134,6 +158,26 @@ export default function ListingDetailPage() {
     }
 
     if (existingApplication || submitting) return;
+
+    if (!listing) {
+      alert('İlan bilgisi alınamadı.');
+      return;
+    }
+
+    const listingGenre = listing.genre?.trim().toLowerCase() ?? '';
+    const selectedScriptDetails = scripts.find(
+      (script) => script.id === selectedScript
+    );
+
+    if (
+      selectedScriptDetails &&
+      (selectedScriptDetails.genre?.trim().toLowerCase() ?? '') !== listingGenre
+    ) {
+      alert(
+        'Seçtiğiniz senaryo bu ilanla aynı türde değil. Lütfen uygun türde bir senaryo seçin.'
+      );
+      return;
+    }
 
     setSubmitting(true);
 
@@ -155,6 +199,42 @@ export default function ListingDetailPage() {
       return;
     }
 
+    // Senaryo doğrulama (explicit sorgu)
+    const { data: scriptRow, error: scriptRowError } = await supabase
+      .from('scripts')
+      .select('id, genre, owner_id')
+      .eq('id', selectedScript)
+      .single();
+
+    if (scriptRowError) {
+      console.error(scriptRowError.message);
+      alert('Senaryo bilgisi doğrulanamadı: ' + scriptRowError.message);
+      setSubmitting(false);
+      return;
+    }
+
+    if (!scriptRow) {
+      alert('Seçtiğiniz senaryo bulunamadı.');
+      setSubmitting(false);
+      return;
+    }
+
+    if (scriptRow.owner_id && scriptRow.owner_id !== user.id) {
+      alert('Bu senaryo size ait görünmüyor.');
+      setSubmitting(false);
+      return;
+    }
+
+    const scriptGenre = scriptRow?.genre?.trim().toLowerCase() ?? '';
+    if (listingGenre && scriptGenre !== listingGenre) {
+      alert(
+        'Seçtiğiniz senaryo bu ilanla aynı türde değil. Lütfen uygun türde bir senaryo seçin.'
+      );
+      setSubmitting(false);
+      return;
+    }
+
+    // Başvuru payload'u
     const payload: Record<string, unknown> = {
       writer_id: user.id,
       script_id: selectedScript,
@@ -163,17 +243,19 @@ export default function ListingDetailPage() {
     };
 
     if (listing?.source === 'requests') {
-      payload.request_id = id;
-      payload.producer_id = listing?.owner_id ?? null;
+      (payload as any).request_id = id;
+      (payload as any).producer_id = listing?.owner_id ?? null;
     } else {
-      payload.listing_id = id;
-      payload.producer_listing_id = id;
+      (payload as any).listing_id = id;
+      (payload as any).producer_listing_id = id;
     }
 
     const { data, error } = await supabase
       .from('applications')
       .insert(payload)
-      .select('id, listing_id, producer_listing_id, request_id, writer_id, script_id, status, created_at')
+      .select(
+        'id, listing_id, producer_listing_id, request_id, writer_id, script_id, status, created_at'
+      )
       .single();
 
     if (error) {
@@ -197,9 +279,14 @@ export default function ListingDetailPage() {
         Tür: {listing.genre} · Bütçe: {budgetLabel(listing.budget_cents)}
       </p>
       <div className="bg-white rounded-xl shadow p-6 border-l-4 border-[#f9c74f] space-y-4">
-        <p className="text-[#4a3d2f]">{listing.description || 'Açıklama bulunamadı.'}</p>
+        <p className="text-[#4a3d2f]">
+          {listing.description || 'Açıklama bulunamadı.'}
+        </p>
         <div className="pt-4 space-y-3 border-t border-[#f3e5ab]">
-          <label className="text-sm font-semibold text-[#4a3d2f]" htmlFor="script-select">
+          <label
+            className="text-sm font-semibold text-[#4a3d2f]"
+            htmlFor="script-select"
+          >
             Senaryonu Seç
           </label>
           <select
@@ -207,12 +294,17 @@ export default function ListingDetailPage() {
             className="w-full p-2 border rounded-lg bg-white"
             value={selectedScript}
             onChange={(event) => setSelectedScript(event.target.value)}
-            disabled={!!existingApplication || scripts.length === 0 || submitting}
+            disabled={
+              !!existingApplication ||
+              submitting ||
+              scripts.length === 0 ||
+              matchingScripts.length === 0
+            }
           >
             <option value="" disabled>
               Bir senaryo seçin
             </option>
-            {scripts.map((script) => (
+            {matchingScripts.map((script) => (
               <option key={script.id} value={script.id}>
                 {script.title}
               </option>
@@ -223,11 +315,19 @@ export default function ListingDetailPage() {
               Henüz kaydedilmiş bir senaryon bulunmuyor.
             </p>
           )}
+          {scripts.length > 0 && matchingScripts.length === 0 && (
+            <p className="text-xs text-[#a38d6d]">
+              Bu ilanın türüyle eşleşen kayıtlı bir senaryon bulunmuyor.
+            </p>
+          )}
           <button
             className="btn btn-primary"
             onClick={handleApply}
             disabled={
-              !!existingApplication || !selectedScript || submitting || scripts.length === 0
+              !!existingApplication ||
+              !selectedScript ||
+              submitting ||
+              matchingScripts.length === 0
             }
           >
             {submitting ? 'Gönderiliyor...' : 'Senaryomla Başvur'}
@@ -247,4 +347,3 @@ export default function ListingDetailPage() {
     </div>
   );
 }
-
