@@ -104,7 +104,7 @@ export default function WriterRequestsPage() {
       {
         request_id: selectedRequest.id,
         script_id: selectedScriptId,
-        user_id: userId,
+        writer_id: userId,
         producer_id: reqDetails.producer_id,
         status: 'pending',
       },
