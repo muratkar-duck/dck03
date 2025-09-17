@@ -5,23 +5,24 @@ import AuthGuard from '@/components/AuthGuard';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { formatMinutes, normalizeMinutes } from '@/lib/duration';
 
 type Request = {
   id: string;
   title: string;
   genre: string;
-  length: string; // ✅ duration yerine length
+  length: number | null;
   deadline: string;
   description: string;
   producer_name: string;
-  producer_id: string;
+  producer_id: string | null;
 };
 
 type Script = {
   id: string;
   title: string;
   genre: string;
-  length: string; // ✅ duration yerine length
+  length: number | null;
 };
 
 export default function WriterRequestsPage() {
@@ -70,13 +71,26 @@ export default function WriterRequestsPage() {
       .eq('owner_id', user.id);
 
     // Veriyi düzenle
-    const formattedRequests = (reqData || []).map((req: any) => ({
-      ...req,
-      producer_name: req.users?.email || 'Bilinmeyen Yapımcı'
+    const formattedRequests: Request[] = (reqData || []).map((req: any) => ({
+      id: req.id,
+      title: req.title,
+      genre: req.genre,
+      length: normalizeMinutes(req.length),
+      deadline: req.deadline ?? '',
+      description: req.description ?? '',
+      producer_name: req.users?.email || 'Bilinmeyen Yapımcı',
+      producer_id: req.producer_id ?? null,
     }));
-    
+
+    const formattedScripts: Script[] = (scrData || []).map((script: any) => ({
+      id: script.id,
+      title: script.title,
+      genre: script.genre ?? '',
+      length: normalizeMinutes(script.length),
+    }));
+
     setRequests(formattedRequests);
-    setScripts(scrData || []);
+    setScripts(formattedScripts);
     setLoading(false);
   };
 
@@ -144,10 +158,14 @@ export default function WriterRequestsPage() {
                 Yapımcı: {req.producer_name}
               </p>
               <p className="text-sm text-[#7a5c36]">Tür: {req.genre}</p>
-              <p className="text-sm text-[#7a5c36]">Süre: {req.length}</p>
+              <p className="text-sm text-[#7a5c36]">
+                Süre: {formatMinutes(req.length)}
+              </p>
               <p className="text-sm text-[#7a5c36]">
                 Teslim Tarihi:{' '}
-                {new Date(req.deadline).toLocaleDateString('tr-TR')}
+                {req.deadline
+                  ? new Date(req.deadline).toLocaleDateString('tr-TR')
+                  : 'Belirtilmemiş'}
               </p>
               <p className="text-sm text-[#4a3d2f]">{req.description}</p>
               <div className="flex gap-2 mt-2">
@@ -193,7 +211,7 @@ export default function WriterRequestsPage() {
                     .filter((s) => s.genre === selectedRequest.genre)
                     .map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.title} ({s.length})
+                        {s.title} ({formatMinutes(s.length, '—')})
                       </option>
                     ))}
                 </select>

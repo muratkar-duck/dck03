@@ -38,7 +38,7 @@ export interface Request {
   title: string;
   description: string | null;
   genre: string;
-  length: string | null; // "90 dakika", "Kısa Film" gibi string değerler
+  length: number | null; // dakika cinsinden süre
   budget: number | null;
   deadline?: string | null; // date (YYYY-MM-DD) olabilir
   created_at: string; // ISO
@@ -49,11 +49,16 @@ export interface Request {
 
 export interface Application {
   id: string;
-  listing_id: string;
+  request_id?: string | null;
+  listing_id?: string | null;
+  producer_listing_id?: string | null;
   writer_id: string;
   script_id: string;
+  producer_id?: string | null;
+  owner_id?: string | null;
   status: ApplicationStatus;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface Suggestion {

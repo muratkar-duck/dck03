@@ -135,7 +135,7 @@ export default function WriterMessagesPage() {
         return;
       }
 
-      const rows = (data as ConversationRow[] | null) ?? [];
+      const rows = ((data ?? []) as unknown) as ConversationRow[];
 
       const mapped: ConversationSummary[] = rows.map((row) => {
         const application = row.application;
