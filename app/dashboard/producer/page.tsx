@@ -80,7 +80,8 @@ export default function ProducerDashboardPage() {
       }
 
       try {
-        const [ordersResponse, listingsResponse] = await Promise.all([
+        const [ordersResponse, listingsResponse, applicationsResponse] =
+          await Promise.all([
           supabase
             .from('orders')
             .select(
@@ -89,12 +90,16 @@ export default function ProducerDashboardPage() {
             .eq('buyer_id', userId)
             .order('created_at', { ascending: false }),
           supabase
-            .from('producer_listings')
-            .select(
-              'id, title, genre, budget_cents, created_at, applications(status)'
-            )
+            .from('v_listings_unified')
+            .select('id, owner_id, title, created_at, source')
             .eq('owner_id', userId)
             .order('created_at', { ascending: false }),
+          supabase
+            .from('applications')
+            .select(
+              'id, owner_id, status, listing_id, producer_listing_id, request_id'
+            )
+            .eq('owner_id', userId),
         ]);
 
         if (isCancelled) {
@@ -144,32 +149,60 @@ export default function ProducerDashboardPage() {
           const rawListings = (listingsResponse.data ?? []) as Array<{
             id: string;
             title: string | null;
-            applications?: Array<{ status?: string | null }> | null;
           }>;
 
-          nextListings = rawListings.map((listing) => {
-            const applicationsArray = Array.isArray(listing.applications)
-              ? listing.applications
-              : [];
+          const countsByListing = new Map<
+            string,
+            { pending: number; accepted: number; rejected: number }
+          >();
 
-            const counts = applicationsArray.reduce(
-              (acc, application) => {
-                const status = String(
-                  application?.status ?? 'pending'
-                ).toLowerCase();
-
-                if (status === 'accepted') {
-                  acc.accepted += 1;
-                } else if (status === 'rejected') {
-                  acc.rejected += 1;
-                } else {
-                  acc.pending += 1;
-                }
-
-                return acc;
-              },
-              { pending: 0, accepted: 0, rejected: 0 }
+          if (applicationsResponse.error) {
+            console.error(
+              'Başvuru sayıları alınamadı:',
+              applicationsResponse.error
             );
+            nextErrors.push('Başvurular yüklenemedi.');
+          } else {
+            const applicationRows = (applicationsResponse.data ?? []) as Array<{
+              status?: string | null;
+              listing_id?: string | null;
+              producer_listing_id?: string | null;
+              request_id?: string | null;
+            }>;
+
+            for (const application of applicationRows) {
+              const targetId =
+                application.producer_listing_id ||
+                application.listing_id ||
+                application.request_id;
+
+              if (!targetId) continue;
+
+              const bucket = countsByListing.get(targetId) ?? {
+                pending: 0,
+                accepted: 0,
+                rejected: 0,
+              };
+
+              const status = String(application.status ?? 'pending').toLowerCase();
+              if (status === 'accepted') {
+                bucket.accepted += 1;
+              } else if (status === 'rejected') {
+                bucket.rejected += 1;
+              } else {
+                bucket.pending += 1;
+              }
+
+              countsByListing.set(targetId, bucket);
+            }
+          }
+
+          nextListings = rawListings.map((listing) => {
+            const counts = countsByListing.get(String(listing.id)) ?? {
+              pending: 0,
+              accepted: 0,
+              rejected: 0,
+            };
 
             return {
               id: String(listing.id),

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
-import type { ProducerListing } from '@/types/db';
+import type { Listing } from '@/types/db';
 
 type WriterScriptOption = {
   id: string;
@@ -23,10 +23,17 @@ const currency = new Intl.NumberFormat('tr-TR', {
   maximumFractionDigits: 2,
 });
 
+const budgetLabel = (budgetCents: number | null | undefined) => {
+  if (typeof budgetCents === 'number') {
+    return currency.format(budgetCents / 100);
+  }
+  return 'Belirtilmemiş';
+};
+
 export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [listing, setListing] = useState<ProducerListing | null>(null);
+  const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [scripts, setScripts] = useState<WriterScriptOption[]>([]);
   const [selectedScript, setSelectedScript] = useState('');
@@ -42,14 +49,16 @@ export default function ListingDetailPage() {
       }
 
       const { data, error } = await supabase
-        .from('producer_listings')
-        .select('id, title, genre, description, budget_cents, created_at')
+        .from('v_listings_unified')
+        .select(
+          'id, owner_id, title, genre, description, budget_cents, created_at, source'
+        )
         .eq('id', id)
-        .single();
+        .maybeSingle();
       if (error) {
         console.error(error.message);
       }
-      setListing(data as ProducerListing | null);
+      setListing((data as Listing | null) ?? null);
       setLoading(false);
     };
     fetchListing();
@@ -87,17 +96,24 @@ export default function ListingDetailPage() {
 
       const { data: appData, error: appError } = await supabase
         .from('applications')
-        .select('id, listing_id, writer_id, script_id, status, created_at')
-        .eq('listing_id', id)
+        .select(
+          'id, listing_id, producer_listing_id, request_id, writer_id, script_id, status, created_at'
+        )
         .eq('writer_id', user.id)
-        .maybeSingle();
+        .or(
+          `listing_id.eq.${id},producer_listing_id.eq.${id},request_id.eq.${id}`
+        )
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (appError) {
         console.error(appError.message);
       }
 
-      if (appData) {
-        const application = appData as ListingApplication;
+      if (appData && appData.length > 0) {
+        const application = appData[0] as ListingApplication & {
+          script_id: string;
+        };
         setExistingApplication(application);
         setSelectedScript(application.script_id);
       } else {
@@ -150,7 +166,7 @@ export default function ListingDetailPage() {
 
     const listingGenre = listing.genre?.trim().toLowerCase() ?? '';
     const selectedScriptDetails = scripts.find(
-      (script) => script.id === selectedScript,
+      (script) => script.id === selectedScript
     );
 
     if (
@@ -158,7 +174,7 @@ export default function ListingDetailPage() {
       (selectedScriptDetails.genre?.trim().toLowerCase() ?? '') !== listingGenre
     ) {
       alert(
-        'Seçtiğiniz senaryo bu ilanla aynı türde değil. Lütfen uygun türde bir senaryo seçin.',
+        'Seçtiğiniz senaryo bu ilanla aynı türde değil. Lütfen uygun türde bir senaryo seçin.'
       );
       return;
     }
@@ -183,11 +199,11 @@ export default function ListingDetailPage() {
       return;
     }
 
+    // Senaryo doğrulama (explicit sorgu)
     const { data: scriptRow, error: scriptRowError } = await supabase
       .from('scripts')
-      .select('id, genre')
+      .select('id, genre, owner_id')
       .eq('id', selectedScript)
-      .eq('owner_id', user.id)
       .single();
 
     if (scriptRowError) {
@@ -203,25 +219,43 @@ export default function ListingDetailPage() {
       return;
     }
 
-    const scriptGenre = scriptRow?.genre?.trim().toLowerCase() ?? '';
+    if (scriptRow.owner_id && scriptRow.owner_id !== user.id) {
+      alert('Bu senaryo size ait görünmüyor.');
+      setSubmitting(false);
+      return;
+    }
 
-    if (scriptGenre !== listingGenre) {
+    const scriptGenre = scriptRow?.genre?.trim().toLowerCase() ?? '';
+    if (listingGenre && scriptGenre !== listingGenre) {
       alert(
-        'Seçtiğiniz senaryo bu ilanla aynı türde değil. Lütfen uygun türde bir senaryo seçin.',
+        'Seçtiğiniz senaryo bu ilanla aynı türde değil. Lütfen uygun türde bir senaryo seçin.'
       );
       setSubmitting(false);
       return;
     }
 
+    // Başvuru payload'u
+    const payload: Record<string, unknown> = {
+      writer_id: user.id,
+      script_id: selectedScript,
+      status: 'pending',
+      owner_id: listing?.owner_id ?? null,
+    };
+
+    if (listing?.source === 'requests') {
+      (payload as any).request_id = id;
+      (payload as any).producer_id = listing?.owner_id ?? null;
+    } else {
+      (payload as any).listing_id = id;
+      (payload as any).producer_listing_id = id;
+    }
+
     const { data, error } = await supabase
       .from('applications')
-      .insert({
-        listing_id: id,
-        writer_id: user.id,
-        script_id: selectedScript,
-        status: 'pending',
-      })
-      .select('id, listing_id, writer_id, script_id, status, created_at')
+      .insert(payload)
+      .select(
+        'id, listing_id, producer_listing_id, request_id, writer_id, script_id, status, created_at'
+      )
       .single();
 
     if (error) {
@@ -242,12 +276,17 @@ export default function ListingDetailPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">🎬 {listing.title}</h1>
       <p className="text-sm text-[#7a5c36]">
-        Tür: {listing.genre} · Bütçe: {currency.format(listing.budget_cents / 100)}
+        Tür: {listing.genre} · Bütçe: {budgetLabel(listing.budget_cents)}
       </p>
       <div className="bg-white rounded-xl shadow p-6 border-l-4 border-[#f9c74f] space-y-4">
-        <p className="text-[#4a3d2f]">{listing.description}</p>
+        <p className="text-[#4a3d2f]">
+          {listing.description || 'Açıklama bulunamadı.'}
+        </p>
         <div className="pt-4 space-y-3 border-t border-[#f3e5ab]">
-          <label className="text-sm font-semibold text-[#4a3d2f]" htmlFor="script-select">
+          <label
+            className="text-sm font-semibold text-[#4a3d2f]"
+            htmlFor="script-select"
+          >
             Senaryonu Seç
           </label>
           <select
@@ -308,4 +347,3 @@ export default function ListingDetailPage() {
     </div>
   );
 }
-

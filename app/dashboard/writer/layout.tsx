@@ -31,13 +31,7 @@ export default function WriterDashboardLayout({
             href="/dashboard/writer/listings"
             className="block hover:underline"
           >
-            🎬 İlanlar
-          </Link>
-          <Link
-            href="/dashboard/writer/requests"
-            className="block hover:underline"
-          >
-            📩 Talepler
+            🎬 İlanlarım (Listings)
           </Link>
           <Link href="/dashboard/writer/stats" className="block hover:underline">
             📊 İstatistikler

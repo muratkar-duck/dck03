@@ -26,22 +26,10 @@ export default function ProducerDashboardLayout({
             🔍 Senaryo Ara
           </Link>
           <Link
-            href="/dashboard/producer/requests/new"
-            className="block hover:underline"
-          >
-            ➕ Talep Oluştur
-          </Link>
-          <Link
-            href="/dashboard/producer/my-requests"
-            className="block hover:underline"
-          >
-            📓 Taleplerim
-          </Link>
-          <Link
             href="/dashboard/producer/listings"
             className="block hover:underline"
           >
-            🎬 İlanlarım
+            🎬 İlanlarım (Listings)
           </Link>
           <Link
             href="/dashboard/producer/listings/new"

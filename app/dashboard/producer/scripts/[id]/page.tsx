@@ -63,10 +63,10 @@ export default function ProducerScriptDetailPage() {
       // 2) Erişim kontrolü: Bu yapımcı, bu script için "ACCEPTED" başvuruya sahip mi?
       const { data: gateRows, error: gateErr } = await supabase
         .from('applications')
-        .select('id, requests!inner(producer_id)')
+        .select('id')
         .eq('script_id', scriptId)
         .eq('status', 'accepted')
-        .eq('requests.producer_id', user.id)
+        .eq('owner_id', user.id)
         .limit(1);
 
       if (gateErr) throw gateErr;

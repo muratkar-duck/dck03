@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { supabase } from '@/lib/supabaseClient';
-import type { ProducerListing } from '@/types/db';
+import type { Listing } from '@/types/db';
 
 const currencyFormatter = new Intl.NumberFormat('tr-TR', {
   style: 'currency',
@@ -16,9 +16,16 @@ const dateFormatter = new Intl.DateTimeFormat('tr-TR', {
   dateStyle: 'medium',
 });
 
+const budgetLabel = (budgetCents: number | null | undefined) => {
+  if (typeof budgetCents === 'number') {
+    return currencyFormatter.format(budgetCents / 100);
+  }
+  return 'Belirtilmemiş';
+};
+
 export default function ProducerListingsPage() {
   const router = useRouter();
-  const [listings, setListings] = useState<ProducerListing[]>([]);
+  const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,15 +52,17 @@ export default function ProducerListingsPage() {
       }
 
       const { data, error: listingsError } = await supabase
-        .from('producer_listings')
-        .select('id, title, genre, description, budget_cents, created_at, owner_id')
+        .from('v_listings_unified')
+        .select(
+          'id, owner_id, title, genre, description, budget_cents, created_at, source'
+        )
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
 
       if (listingsError) {
         setError(listingsError.message);
       } else {
-        setListings((data ?? []) as ProducerListing[]);
+        setListings((data ?? []) as Listing[]);
       }
 
       setLoading(false);
@@ -110,7 +119,7 @@ export default function ProducerListingsPage() {
                       {listing.title}
                     </h2>
                     <span className="text-sm font-medium text-[#ffaa06]">
-                      {currencyFormatter.format(listing.budget_cents / 100)}
+                      {budgetLabel(listing.budget_cents)}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-4 text-sm text-[#7a5c36]">
@@ -118,9 +127,16 @@ export default function ProducerListingsPage() {
                     <span>
                       Oluşturuldu: {dateFormatter.format(new Date(listing.created_at))}
                     </span>
+                    {listing.source === 'requests' ? (
+                      <span className="text-xs uppercase tracking-wide text-[#a38d6d]">
+                        Eski Talep
+                      </span>
+                    ) : null}
                   </div>
-                  {listing.description && (
+                  {listing.description ? (
                     <p className="text-sm text-[#4f3d2a]">{listing.description}</p>
+                  ) : (
+                    <p className="text-sm text-[#a38d6d]">Açıklama bulunamadı.</p>
                   )}
                 </Link>
               </li>

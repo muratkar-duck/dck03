@@ -5,17 +5,17 @@ import AuthGuard from '@/components/AuthGuard';
 import { supabase } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
-type Row = {
+type NotificationItem = {
   id: string;
   created_at: string;
   status: string;
-  script?: { id: string; title: string }[] | null;
-  request?: { id: string; title: string }[] | null;
-  producer?: { id: string; email: string | null }[] | null;
+  script?: { id: string; title: string } | null;
+  listing?: { id: string; title: string | null } | null;
+  producerEmail?: string | null;
 };
 
 export default function WriterNotificationsPage() {
-  const [items, setItems] = useState<Row[]>([]);
+  const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,20 +35,76 @@ export default function WriterNotificationsPage() {
         `
           id,
           listing_id,
+          request_id,
+          producer_listing_id,
           writer_id,
           script_id,
           status,
           created_at,
           script:scripts ( id, title, genre, length, price_cents, created_at ),
-          request:requests ( id, title, genre, length, created_at ),
-          producer:users ( id, email )
+          producer:users!applications_owner_id_fkey ( id, email )
         `
       )
       .eq('writer_id', user.id)
       .in('status', ['accepted', 'rejected'])
       .order('created_at', { ascending: false });
 
-    if (!error && data) setItems(data as Row[]);
+    if (!error && data) {
+      const rows = data as Array<any>;
+
+      const listingIds = Array.from(
+        new Set(
+          rows
+            .map(
+              (row) =>
+                row.producer_listing_id || row.listing_id || row.request_id
+            )
+            .filter((value): value is string => Boolean(value))
+        )
+      );
+
+      let listingsMap = new Map<string, { id: string; title: string | null }>();
+
+      if (listingIds.length > 0) {
+        const { data: listingsData, error: listingsError } = await supabase
+          .from('v_listings_unified')
+          .select('id, title')
+          .in('id', listingIds);
+
+        if (listingsError) {
+          console.error('İlan verileri yüklenemedi:', listingsError.message);
+        } else {
+          listingsMap = new Map(
+            (listingsData ?? []).map((listing: any) => [
+              String(listing.id),
+              { id: String(listing.id), title: listing.title ?? null },
+            ])
+          );
+        }
+      }
+
+      const normalized: NotificationItem[] = rows.map((row) => {
+        const listingId =
+          row.producer_listing_id || row.listing_id || row.request_id;
+        const scriptData = Array.isArray(row.script) ? row.script[0] : row.script;
+        const producerData = Array.isArray(row.producer)
+          ? row.producer[0]
+          : row.producer;
+
+        return {
+          id: row.id,
+          status: row.status,
+          created_at: row.created_at,
+          script: scriptData
+            ? { id: String(scriptData.id), title: scriptData.title ?? '—' }
+            : null,
+          listing: listingId ? listingsMap.get(String(listingId)) ?? null : null,
+          producerEmail: producerData?.email ?? null,
+        };
+      });
+
+      setItems(normalized);
+    }
     setLoading(false);
   };
 
@@ -95,11 +151,11 @@ export default function WriterNotificationsPage() {
               >
                 <div>
                   <p className="font-semibold">
-                    {r.producer?.[0]?.email || 'Yapımcı'} →{' '}
-                    {r.script?.[0]?.title || '—'}
+                    {r.producerEmail || 'Yapımcı'} →{' '}
+                    {r.script?.title || '—'}
                   </p>
                   <p className="text-sm text-[#7a5c36]">
-                    İlan: <strong>{r.request?.[0]?.title || '—'}</strong>
+                    İlan: <strong>{r.listing?.title || '—'}</strong>
                   </p>
                   <p className="text-xs text-[#a38d6d]">
                     {new Date(r.created_at).toLocaleString('tr-TR')} ·{' '}
@@ -116,14 +172,16 @@ export default function WriterNotificationsPage() {
                       💬 Sohbeti Aç
                     </Link>
                   ) : null}
-                  <Link
-                    href={`/dashboard/writer/requests/${
-                      r.request?.[0]?.id || ''
-                    }`}
-                    className="btn btn-secondary"
-                  >
-                    İlana Git
-                  </Link>
+                    <Link
+                      href={
+                        r.listing?.id
+                          ? `/dashboard/writer/listings/${r.listing.id}`
+                          : '/dashboard/writer/listings'
+                      }
+                      className="btn btn-secondary"
+                    >
+                      İlana Git
+                    </Link>
                 </div>
               </div>
             ))}

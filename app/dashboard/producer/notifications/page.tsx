@@ -9,9 +9,9 @@ type Row = {
   id: string;
   created_at: string;
   status: string;
-  script?: { id: string; title: string }[] | null;
-  request?: { id: string; title: string }[] | null;
-  writer?: { id: string; email: string | null }[] | null;
+  script?: { id: string; title: string } | null;
+  listing?: { id: string; title: string | null } | null;
+  writerEmail?: string | null;
 };
 
 export default function ProducerNotificationsPage() {
@@ -36,21 +36,75 @@ export default function ProducerNotificationsPage() {
           id,
           request_id,
           listing_id,
+          producer_listing_id,
           writer_id,
           producer_id,
+          owner_id,
           script_id,
           status,
           created_at,
           script:scripts ( id, title, genre, length, price_cents, created_at ),
-          request:requests ( id, title, genre, length, created_at ),
           writer:users ( id, email )
         `
       )
-      .eq('producer_id', user.id)
+      .or(`producer_id.eq.${user.id},owner_id.eq.${user.id}`)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    if (!error && data) setItems(data as Row[]);
+    if (!error && data) {
+      const rows = data as Array<any>;
+
+      const listingIds = Array.from(
+        new Set(
+          rows
+            .map(
+              (row) =>
+                row.producer_listing_id || row.listing_id || row.request_id
+            )
+            .filter((value): value is string => Boolean(value))
+        )
+      );
+
+      let listingsMap = new Map<string, { id: string; title: string | null }>();
+
+      if (listingIds.length > 0) {
+        const { data: listingsData, error: listingsError } = await supabase
+          .from('v_listings_unified')
+          .select('id, title')
+          .in('id', listingIds);
+
+        if (listingsError) {
+          console.error('İlan başlığı yüklenemedi:', listingsError.message);
+        } else {
+          listingsMap = new Map(
+            (listingsData ?? []).map((listing: any) => [
+              String(listing.id),
+              { id: String(listing.id), title: listing.title ?? null },
+            ])
+          );
+        }
+      }
+
+      const normalized: Row[] = rows.map((row) => {
+        const listingId =
+          row.producer_listing_id || row.listing_id || row.request_id;
+        const scriptData = Array.isArray(row.script) ? row.script[0] : row.script;
+        const writerData = Array.isArray(row.writer) ? row.writer[0] : row.writer;
+
+        return {
+          id: row.id,
+          status: row.status,
+          created_at: row.created_at,
+          script: scriptData
+            ? { id: String(scriptData.id), title: scriptData.title ?? '—' }
+            : null,
+          listing: listingId ? listingsMap.get(String(listingId)) ?? null : null,
+          writerEmail: writerData?.email ?? null,
+        };
+      });
+
+      setItems(normalized);
+    }
     setLoading(false);
   };
 
@@ -97,11 +151,11 @@ export default function ProducerNotificationsPage() {
               >
                 <div>
                   <p className="font-semibold">
-                    {r.writer?.[0]?.email || 'Yazar'} başvurdu:{' '}
-                    {r.script?.[0]?.title || '—'}
+                    {r.writerEmail || 'Yazar'} başvurdu:{' '}
+                    {r.script?.title || '—'}
                   </p>
                   <p className="text-sm text-[#7a5c36]">
-                    İlan: <strong>{r.request?.[0]?.title || '—'}</strong>
+                    İlan: <strong>{r.listing?.title || '—'}</strong>
                   </p>
                   <p className="text-xs text-[#a38d6d]">
                     {new Date(r.created_at).toLocaleString('tr-TR')} ·{' '}
@@ -112,9 +166,11 @@ export default function ProducerNotificationsPage() {
                 <div className="flex gap-2">
                   {/* Pending → İlan detayına gidip Kabul/Red ver */}
                   <Link
-                    href={`/dashboard/producer/requests/${
-                      r.request?.[0]?.id || ''
-                    }`}
+                    href={
+                      r.listing?.id
+                        ? `/dashboard/producer/listings/${r.listing.id}`
+                        : '/dashboard/producer/listings'
+                    }
                     className="btn btn-primary"
                   >
                     İlanı Aç (Kabul/Red)
