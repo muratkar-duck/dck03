@@ -14,8 +14,12 @@ type ConversationRow = {
     listing?: {
       id: string;
       title: string | null;
-      owner?: { id: string; email: string | null }[] | null;
+      genre?: string | null;
+      budget_cents?: number | null;
+      owner_id?: string | null;
+      source?: string | null;
     }[] | null;
+    owner?: { id: string; email: string | null }[] | null;
   } | null;
 };
 
@@ -108,15 +112,18 @@ export default function WriterMessagesPage() {
               price_cents,
               created_at
             ),
-            listing:producer_listings!inner(
+            listing:v_listings_unified!inner(
               id,
               title,
               genre,
               budget_cents,
-              owner:users!producer_listings_owner_id_fkey(
-                id,
-                email
-              )
+              owner_id,
+              source,
+              created_at
+            ),
+            owner:users!applications_owner_id_fkey(
+              id,
+              email
             ),
             writer_id
           )
@@ -143,7 +150,7 @@ export default function WriterMessagesPage() {
         const script = Array.isArray(scriptData) ? scriptData[0] : scriptData;
         const listingData = application?.listing;
         const listing = Array.isArray(listingData) ? listingData[0] : listingData;
-        const ownerData = listing?.owner;
+        const ownerData = application?.owner;
         const owner = Array.isArray(ownerData) ? ownerData[0] : ownerData;
 
         return {

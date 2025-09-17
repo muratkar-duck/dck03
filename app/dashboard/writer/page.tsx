@@ -24,7 +24,7 @@ type ScriptStat = {
   revenueCents: number;
 };
 
-type ProducerListingRow = {
+type ListingRow = {
   id: string;
   title: string;
 };
@@ -32,7 +32,7 @@ type ProducerListingRow = {
 type ApplicationQueryRow = {
   id: string;
   status: string | null;
-  listing?: ProducerListingRow | ProducerListingRow[] | null;
+  listing?: ListingRow | ListingRow[] | null;
 };
 
 type ApplicationSummary = {
@@ -152,12 +152,13 @@ export default function WriterDashboardPage() {
               script_id,
               status,
               created_at,
-              listing:producer_listings (
+              listing:v_listings_unified!inner (
                 id,
                 title,
                 genre,
                 budget_cents,
-                created_at
+                created_at,
+                source
               )
             `
           )

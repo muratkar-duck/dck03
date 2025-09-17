@@ -23,6 +23,19 @@ export interface Script {
   created_at: string; // ISO
 }
 
+export type ListingSource = 'producer_listings' | 'requests';
+
+export interface Listing {
+  id: string;
+  owner_id: string | null;
+  title: string;
+  description: string | null;
+  genre: string;
+  budget_cents: number | null;
+  created_at: string;
+  source: ListingSource;
+}
+
 export interface ProducerListing {
   id: string;
   owner_id: string;

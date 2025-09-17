@@ -43,10 +43,10 @@ export default function ProducerApplicationsPage() {
         created_at,
         listing_id,
         script_id,
-        producer_listings!inner(id, title, owner_id),
+        listing:v_listings_unified!inner(id, title, owner_id, source),
         scripts!inner(id, title, genre, length, price_cents)
       `)
-      .eq('producer_listings.owner_id', user.id)
+      .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -55,9 +55,9 @@ export default function ProducerApplicationsPage() {
     } else {
       // Veriyi düzenle
       const formatted = (data || []).map((item: any) => {
-        const listing = Array.isArray(item.producer_listings)
-          ? item.producer_listings[0]
-          : item.producer_listings;
+        const listing = Array.isArray(item.listing)
+          ? item.listing[0]
+          : item.listing;
         const script = Array.isArray(item.scripts)
           ? item.scripts[0]
           : item.scripts;
