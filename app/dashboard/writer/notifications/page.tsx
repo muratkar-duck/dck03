@@ -12,6 +12,8 @@ type NotificationItem = {
   script?: { id: string; title: string } | null;
   listing?: { id: string; title: string | null } | null;
   producerEmail?: string | null;
+  conversationId?: string | null;
+  conversationError?: boolean;
 };
 
 export default function WriterNotificationsPage() {
@@ -103,7 +105,43 @@ export default function WriterNotificationsPage() {
         };
       });
 
-      setItems(normalized);
+      const ensured = await Promise.all(
+        normalized.map(async (item) => {
+          if (item.status !== 'accepted') {
+            return { conversationId: null, conversationError: false };
+          }
+
+          const { data: conversation, error: conversationError } = await supabase
+            .from('conversations')
+            .upsert(
+              { application_id: item.id },
+              { onConflict: 'application_id' }
+            )
+            .select('id')
+            .maybeSingle();
+
+          if (conversationError || !conversation?.id) {
+            if (conversationError) {
+              console.error(
+                'Konuşma oluşturulamadı:',
+                conversationError.message
+              );
+            }
+
+            return { conversationId: null, conversationError: true };
+          }
+
+          return { conversationId: conversation.id, conversationError: false };
+        })
+      );
+
+      const withConversations = normalized.map((item, index) => ({
+        ...item,
+        conversationId: ensured[index]?.conversationId ?? null,
+        conversationError: ensured[index]?.conversationError ?? false,
+      }));
+
+      setItems(withConversations);
     }
     setLoading(false);
   };
@@ -165,23 +203,32 @@ export default function WriterNotificationsPage() {
 
                 <div className="flex gap-2">
                   {r.status === 'accepted' ? (
-                    <Link
-                      href={`/dashboard/writer/messages?application=${r.id}`}
-                      className="btn btn-primary"
-                    >
-                      💬 Sohbeti Aç
-                    </Link>
+                    r.conversationId ? (
+                      <Link
+                        href={`/dashboard/writer/messages?c=${r.conversationId}`}
+                        className="btn btn-primary"
+                      >
+                        💬 Sohbeti Aç
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/dashboard/writer/notifications/${r.id}`}
+                        className="btn btn-primary"
+                      >
+                        💬 Sohbeti Başlat
+                      </Link>
+                    )
                   ) : null}
-                    <Link
-                      href={
-                        r.listing?.id
-                          ? `/dashboard/writer/listings/${r.listing.id}`
-                          : '/dashboard/writer/listings'
-                      }
-                      className="btn btn-secondary"
-                    >
-                      İlana Git
-                    </Link>
+                  <Link
+                    href={
+                      r.listing?.id
+                        ? `/dashboard/writer/listings/${r.listing.id}`
+                        : '/dashboard/writer/listings'
+                    }
+                    className="btn btn-secondary"
+                  >
+                    İlana Git
+                  </Link>
                 </div>
               </div>
             ))}

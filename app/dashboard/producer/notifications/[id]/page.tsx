@@ -19,6 +19,7 @@ export default function ProducerNotificationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [row, setRow] = useState<Row | null>(null);
   const [loading, setLoading] = useState(true);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   useEffect(() => {
     const load = async () => {
       if (!id) {
@@ -80,6 +81,30 @@ export default function ProducerNotificationDetailPage() {
           listing,
           writerEmail: writerData?.email ?? null,
         });
+
+        const {
+          data: ensuredConversation,
+          error: ensuredConversationError,
+        } = await supabase
+          .from('conversations')
+          .upsert(
+            { application_id: data.id },
+            { onConflict: 'application_id' }
+          )
+          .select('id')
+          .maybeSingle();
+
+        if (ensuredConversationError || !ensuredConversation?.id) {
+          if (ensuredConversationError) {
+            console.error(
+              'Konuşma oluşturulamadı:',
+              ensuredConversationError.message
+            );
+          }
+          setConversationId(null);
+        } else {
+          setConversationId(ensuredConversation.id);
+        }
       }
       setLoading(false);
     };
@@ -134,12 +159,21 @@ export default function ProducerNotificationDetailPage() {
             </p>
 
             <div className="flex gap-2 pt-2">
-              <Link
-                href={`/dashboard/producer/messages?application=${row.id}`}
-                className="btn btn-primary"
-              >
-                💬 Sohbeti Aç
-              </Link>
+              {conversationId ? (
+                <Link
+                  href={`/dashboard/producer/messages?c=${conversationId}`}
+                  className="btn btn-primary"
+                >
+                  💬 Sohbeti Aç
+                </Link>
+              ) : (
+                <Link
+                  href={`/dashboard/producer/notifications/${row.id}`}
+                  className="btn btn-primary"
+                >
+                  💬 Sohbeti Başlat
+                </Link>
+              )}
               <Link
                 href={
                   row.listing?.id

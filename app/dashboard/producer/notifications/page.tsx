@@ -12,6 +12,8 @@ type Row = {
   script?: { id: string; title: string } | null;
   listing?: { id: string; title: string | null } | null;
   writerEmail?: string | null;
+  conversationId?: string | null;
+  conversationError?: boolean;
 };
 
 export default function ProducerNotificationsPage() {
@@ -103,7 +105,39 @@ export default function ProducerNotificationsPage() {
         };
       });
 
-      setItems(normalized);
+      const ensured = await Promise.all(
+        normalized.map(async (item) => {
+          const { data: conversation, error: conversationError } = await supabase
+            .from('conversations')
+            .upsert(
+              { application_id: item.id },
+              { onConflict: 'application_id' }
+            )
+            .select('id')
+            .maybeSingle();
+
+          if (conversationError || !conversation?.id) {
+            if (conversationError) {
+              console.error(
+                'Konuşma oluşturulamadı:',
+                conversationError.message
+              );
+            }
+
+            return { conversationId: null, conversationError: true };
+          }
+
+          return { conversationId: conversation.id, conversationError: false };
+        })
+      );
+
+      const withConversations = normalized.map((item, index) => ({
+        ...item,
+        conversationId: ensured[index]?.conversationId ?? null,
+        conversationError: ensured[index]?.conversationError ?? false,
+      }));
+
+      setItems(withConversations);
     }
     setLoading(false);
   };
@@ -164,14 +198,28 @@ export default function ProducerNotificationsPage() {
                 </div>
 
                 <div className="flex gap-2">
-                  {/* Pending → İlan detayına gidip Kabul/Red ver */}
+                  {r.conversationId ? (
+                    <Link
+                      href={`/dashboard/producer/messages?c=${r.conversationId}`}
+                      className="btn btn-primary"
+                    >
+                      💬 Sohbeti Aç
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/dashboard/producer/notifications/${r.id}`}
+                      className="btn btn-primary"
+                    >
+                      💬 Sohbeti Başlat
+                    </Link>
+                  )}
                   <Link
                     href={
                       r.listing?.id
                         ? `/dashboard/producer/listings/${r.listing.id}`
                         : '/dashboard/producer/listings'
                     }
-                    className="btn btn-primary"
+                    className="btn btn-secondary"
                   >
                     İlanı Aç (Kabul/Red)
                   </Link>
