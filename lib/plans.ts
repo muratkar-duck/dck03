@@ -1,10 +1,10 @@
 import type { Session } from '@supabase/supabase-js';
 
-export type PlanId = 'student' | 'basic' | 'pro' | 'top-tier';
+export type PlanId = 'free' | 'student' | 'pro' | 'top';
 
 export function isPlanId(value: string | null | undefined): value is PlanId {
   if (!value) return false;
-  return value === 'student' || value === 'basic' || value === 'pro' || value === 'top-tier';
+  return value === 'free' || value === 'student' || value === 'pro' || value === 'top';
 }
 
 export type Plan = {
@@ -34,36 +34,48 @@ export type PlanSelection = {
 
 const PLANS: Plan[] = [
   {
-    id: 'student',
-    name: 'Student',
-    icon: '🎓',
-    tagline: 'Sadece @edu.tr e-postaları için geçerlidir.',
-    price: '₺0 / ₺49',
-    features: ['Aylık 1 senaryo yükleme', 'Temel erişim', 'Özgeçmiş oluşturma'],
+    id: 'free',
+    name: 'Ücretsiz',
+    icon: '🆓',
+    tagline: 'Temel özelliklerle Ducktylo’yu deneyimleyin.',
+    price: '₺0',
+    features: [
+      'Profil oluşturma ve vitrine katılma',
+      'Aylık 1 senaryo yükleme',
+      'Temel eşleştirme önerileri',
+    ],
   },
   {
-    id: 'basic',
-    name: 'Basic',
-    icon: '📝',
-    tagline: 'Yeni başlayan senaristler için',
-    price: '₺149 / ay',
-    features: ['2 senaryo yükleme', 'Temel filtreleme erişimi', 'Mesajlaşma sistemi'],
+    id: 'student',
+    name: 'Öğrenci',
+    icon: '🎓',
+    tagline: '@edu.tr adresine sahip öğrenciler için indirimli erişim.',
+    price: '₺49 / ay',
+    features: [
+      'Aylık 3 senaryo yükleme',
+      'Öğrenci rozetli vitrin görünürlüğü',
+      'Mesajlaşma ve başvuru yönetimi',
+    ],
   },
   {
     id: 'pro',
     name: 'Pro',
     icon: '💼',
-    tagline: 'Düzenli senaryo üretenler için',
+    tagline: 'Düzenli senaryo üretenler için gelişmiş araçlar.',
     price: '₺299 / ay',
-    features: ['5 senaryo', 'Vitrin görünürlüğü', 'Temsiliyet & danışmanlık'],
+    features: [
+      'Aylık 10 senaryo yükleme',
+      'Vitrinde öne çıkarma ve analizler',
+      'Temsiliyet & danışmanlık desteği',
+    ],
   },
   {
-    id: 'top-tier',
-    name: 'Top Tier',
+    id: 'top',
+    name: 'Top',
     icon: '🌟',
-    tagline: 'Sektörün profesyonelleri için',
+    tagline: 'Ajanslar ve ekipler için sınırsız güç.',
     price: '₺499 / ay',
-    features: ['Sınırsız senaryo', 'Öne çıkma', 'Öncelikli destek'],
+    features: ['Sınırsız senaryo yükleme', 'Özel vitrin konumları', 'Öncelikli destek ve danışman'],
   },
 ];
 
@@ -98,28 +110,28 @@ const DEFAULT_PLAN_SELECTIONS: Record<string, PlanSelection> = {
     source: 'default',
   },
   producer: {
-    planId: 'basic',
+    planId: 'student',
     renewsAt: '01 Ağustos 2025',
     history: [
       {
         id: 'producer-2025-07',
         billedAt: '01 Temmuz 2025',
-        amount: '₺149',
-        planId: 'basic',
+        amount: '₺49',
+        planId: 'student',
         status: 'Ödendi',
       },
       {
         id: 'producer-2025-06',
         billedAt: '01 Haziran 2025',
-        amount: '₺149',
-        planId: 'basic',
+        amount: '₺49',
+        planId: 'student',
         status: 'Ödendi',
       },
       {
         id: 'producer-2025-05',
         billedAt: '01 Mayıs 2025',
-        amount: '₺149',
-        planId: 'basic',
+        amount: '₺49',
+        planId: 'student',
         status: 'Ödendi',
       },
     ],

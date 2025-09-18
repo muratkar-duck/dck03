@@ -13,13 +13,17 @@ import {
 import { supabase } from '@/lib/supabaseClient';
 import { useSession } from '@/hooks/useSession';
 
+type PlanUpdateInput = PlanId | 'upgrade' | 'downgrade';
+
 type UsePlanDataResult = {
   plans: Plan[];
   selection: PlanSelection | null;
   loading: boolean;
   isAuthenticated: boolean;
   isSaving: boolean;
-  updatePlan: (planId: PlanId) => Promise<void>;
+  updatePlan: (target: PlanUpdateInput) => Promise<void>;
+  upgradePlan: () => Promise<void>;
+  downgradePlan: () => Promise<void>;
   refresh: () => Promise<void>;
 };
 
@@ -32,7 +36,18 @@ export function usePlanData(): UsePlanDataResult {
   const role = session?.user?.user_metadata?.role as string | undefined;
   const userId = session?.user?.id as string | undefined;
 
-  const plans = useMemo(() => getPlans(), []);
+  const order: PlanId[] = useMemo(() => ['free', 'student', 'pro', 'top'], []);
+
+  const plans = useMemo(() => {
+    const planList = getPlans();
+    const orderMap = new Map(order.map((planId, index) => [planId, index] as const));
+
+    return planList.sort((a, b) => {
+      const aIndex = orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+      const bIndex = orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+      return aIndex - bIndex;
+    });
+  }, [order]);
 
   const applyFallbackSelection = useCallback(() => {
     const fallback = getDefaultSelectionForRole(role) ?? null;
@@ -82,10 +97,43 @@ export function usePlanData(): UsePlanDataResult {
     fetchSelection();
   }, [fetchSelection, loading, session]);
 
+  const resolveTargetPlan = useCallback(
+    (input: PlanUpdateInput): PlanId | null => {
+      if (input === 'upgrade' || input === 'downgrade') {
+        const currentPlan = selection?.planId ?? null;
+        if (!currentPlan) {
+          return order[0];
+        }
+
+        const currentIndex = order.indexOf(currentPlan);
+        if (currentIndex === -1) {
+          return order[0];
+        }
+
+        const step = input === 'upgrade' ? 1 : -1;
+        const nextIndex = Math.min(order.length - 1, Math.max(0, currentIndex + step));
+
+        return order[nextIndex] ?? currentPlan;
+      }
+
+      return input;
+    },
+    [order, selection?.planId],
+  );
+
   const updatePlan = useCallback(
-    async (planId: PlanId) => {
+    async (target: PlanUpdateInput) => {
       if (!userId) {
         throw new Error('Kullanıcı oturumu bulunamadı.');
+      }
+
+      const planId = resolveTargetPlan(target);
+      if (!planId) {
+        return;
+      }
+
+      if (selection?.planId === planId) {
+        return;
       }
 
       setIsSaving(true);
@@ -106,8 +154,11 @@ export function usePlanData(): UsePlanDataResult {
         setIsSaving(false);
       }
     },
-    [userId],
+    [resolveTargetPlan, selection?.planId, userId],
   );
+
+  const upgradePlan = useCallback(() => updatePlan('upgrade'), [updatePlan]);
+  const downgradePlan = useCallback(() => updatePlan('downgrade'), [updatePlan]);
 
   const refresh = useCallback(async () => {
     if (!session || !userId) return;
@@ -121,6 +172,8 @@ export function usePlanData(): UsePlanDataResult {
     isAuthenticated: Boolean(session),
     isSaving,
     updatePlan,
+    upgradePlan,
+    downgradePlan,
     refresh,
   };
 }

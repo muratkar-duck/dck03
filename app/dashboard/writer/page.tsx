@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
+import { usePlanData } from '@/hooks/usePlanData';
 import { supabase } from '@/lib/supabaseClient';
 
 type OrderRow = {
@@ -85,6 +86,11 @@ export default function WriterDashboardPage() {
   const [applications, setApplications] = useState<ApplicationSummary[]>([]);
   const [loadingApplications, setLoadingApplications] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const {
+    selection: planSelection,
+    loading: planLoading,
+    plans: availablePlans,
+  } = usePlanData();
 
   useEffect(() => {
     let isMounted = true;
@@ -220,6 +226,11 @@ export default function WriterDashboardPage() {
     [scriptStats]
   );
 
+  const activePlan = useMemo(
+    () => availablePlans.find((plan) => plan.id === planSelection?.planId) ?? null,
+    [availablePlans, planSelection?.planId]
+  );
+
   return (
     <AuthGuard allowedRoles={['writer']}>
       <div className="space-y-8">
@@ -259,9 +270,19 @@ export default function WriterDashboardPage() {
 
           <div className="card">
             <h2 className="mb-2 text-lg font-semibold">💳 Üyelik Planın</h2>
-            <p className="text-xl font-bold text-[#7a5c36]">Pro</p>
+            <p className="text-xl font-bold text-[#7a5c36]">
+              {planLoading
+                ? 'Yükleniyor…'
+                : activePlan
+                  ? `${activePlan.icon} ${activePlan.name}`
+                  : 'Plan bilgisi bulunamadı'}
+            </p>
             <p className="text-sm text-[#7a5c36]">
-              Sonraki yenileme: 31 Ağustos 2025
+              {planLoading
+                ? 'Plan bilgilerin alınıyor.'
+                : planSelection?.renewsAt
+                  ? `Sonraki yenileme: ${planSelection.renewsAt}`
+                  : 'Yenileme tarihi henüz belirlenmedi.'}
             </p>
           </div>
 

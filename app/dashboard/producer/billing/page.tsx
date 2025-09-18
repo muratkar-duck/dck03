@@ -15,7 +15,7 @@ export default function ProducerBillingPage() {
 }
 
 function BillingContent() {
-  const { selection, loading, isSaving, updatePlan } = usePlanData();
+  const { selection, loading, isSaving, upgradePlan, downgradePlan } = usePlanData();
   const [actionError, setActionError] = useState<string | null>(null);
   const plan = selection ? getPlanById(selection.planId) : undefined;
 
@@ -26,7 +26,7 @@ function BillingContent() {
   const handleUpgrade = async () => {
     setActionError(null);
     try {
-      await updatePlan('top-tier');
+      await upgradePlan();
     } catch (error) {
       console.error('Plan yükseltme başarısız:', error);
       setActionError('Plan yükseltilirken bir hata oluştu. Lütfen tekrar deneyin.');
@@ -36,7 +36,7 @@ function BillingContent() {
   const handleCancel = async () => {
     setActionError(null);
     try {
-      await updatePlan('student');
+      await downgradePlan();
     } catch (error) {
       console.error('Plan iptali başarısız:', error);
       setActionError('Plan iptal edilirken bir hata oluştu. Lütfen tekrar deneyin.');
