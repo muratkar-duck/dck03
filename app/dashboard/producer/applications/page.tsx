@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
+import { ensureConversationWithParticipants } from '@/lib/conversations';
 import { supabase } from '@/lib/supabaseClient';
 
 type ApplicationRow = {
@@ -184,63 +185,11 @@ export default function ProducerApplicationsPage() {
     let conversationError: string | null = null;
 
     if (decision === 'accepted') {
-      const { data: applicationData, error: applicationFetchError } = await supabase
-        .from('applications')
-        .select('writer_id, owner_id')
-        .eq('id', applicationId)
-        .single();
-
-      if (applicationFetchError) {
-        console.error(applicationFetchError);
-        conversationError = applicationFetchError.message;
-      } else {
-        const { data: conversationData, error: upsertError } = await supabase
-          .from('conversations')
-          .upsert(
-            { application_id: applicationId },
-            { onConflict: 'application_id' }
-          )
-          .select()
-          .single();
-
-        if (upsertError || !conversationData) {
-          console.error(upsertError);
-          conversationError = upsertError?.message || 'Sohbet oluşturulamadı';
-        } else {
-          const participants = [] as {
-            conversation_id: string;
-            user_id: string;
-            role: 'writer' | 'producer';
-          }[];
-
-          if (applicationData?.writer_id) {
-            participants.push({
-              conversation_id: conversationData.id,
-              user_id: applicationData.writer_id,
-              role: 'writer',
-            });
-          }
-
-          if (applicationData?.owner_id) {
-            participants.push({
-              conversation_id: conversationData.id,
-              user_id: applicationData.owner_id,
-              role: 'producer',
-            });
-          }
-
-          if (participants.length > 0) {
-            const { error: participantsError } = await supabase
-              .from('conversation_participants')
-              .upsert(participants, { onConflict: 'conversation_id,user_id' });
-
-            if (participantsError) {
-              console.error(participantsError);
-              conversationError = participantsError.message;
-            }
-          }
-        }
-      }
+      const { error } = await ensureConversationWithParticipants(
+        supabase,
+        applicationId
+      );
+      conversationError = error;
     }
 
     if (conversationError) {

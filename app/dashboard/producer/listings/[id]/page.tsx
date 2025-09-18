@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
+import { ensureConversationWithParticipants } from '@/lib/conversations';
 import { supabase } from '@/lib/supabaseClient';
 import type { Listing } from '@/types/db';
 
@@ -203,18 +204,14 @@ export default function ProducerListingDetailPage() {
       return;
     }
 
-    if (decision === 'accepted') {
-      const { error: upsertError } = await supabase
-        .from('conversations')
-        .upsert(
-          { application_id: applicationId },
-          { onConflict: 'application_id' }
-        );
+    let conversationError: string | null = null;
 
-      if (upsertError) {
-        console.error(upsertError);
-        alert('❌ Sohbet başlatma hatası: ' + upsertError.message);
-      }
+    if (decision === 'accepted') {
+      const { error } = await ensureConversationWithParticipants(
+        supabase,
+        applicationId
+      );
+      conversationError = error;
     }
 
     setApplications((prev) =>
@@ -224,6 +221,14 @@ export default function ProducerListingDetailPage() {
     );
 
     setUpdatingId(null);
+
+    if (conversationError) {
+      alert(
+        `⚠️ Başvuru kabul edildi ancak sohbet açılamadı: ${conversationError}`
+      );
+    } else {
+      alert(`✅ Başvuru ${decision === 'accepted' ? 'kabul edildi' : 'reddedildi'}`);
+    }
   };
 
   const getStatusBadge = (status: string) => {
