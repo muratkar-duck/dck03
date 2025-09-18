@@ -1,27 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { supabase } from '@/lib/supabaseClient';
-
-type ConversationRow = {
-  id: string;
-  created_at: string;
-  application: {
-    id: string;
-    script?: { id: string; title: string }[] | null;
-    listing?: {
-      id: string;
-      title: string | null;
-      genre?: string | null;
-      budget_cents?: number | null;
-      owner_id?: string | null;
-      source?: string | null;
-    }[] | null;
-    owner?: { id: string; email: string | null }[] | null;
-  } | null;
-};
 
 type ConversationSummary = {
   id: string;
@@ -40,6 +22,11 @@ type Message = {
   created_at: string;
 };
 
+const toSingle = <T,>(value: T | T[] | null | undefined): T | null => {
+  if (!value) return null;
+  return Array.isArray(value) ? value[0] ?? null : value;
+};
+
 export default function WriterMessagesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -56,6 +43,61 @@ export default function WriterMessagesPage() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const ensureParticipantsForConversation = useCallback(
+    async (
+      conversationId: string,
+      applicationId: string,
+      fallbackUserId: string | null
+    ) => {
+      const { data: application, error: applicationError } = await supabase
+        .from('applications')
+        .select('id, writer_id, owner_id')
+        .eq('id', applicationId)
+        .maybeSingle();
+
+      if (applicationError) {
+        console.error(
+          'Konuşma katılımcıları için başvuru bilgisi alınamadı:',
+          applicationError.message
+        );
+        return;
+      }
+
+      const participantIds = new Set<string>();
+      if (application?.writer_id) participantIds.add(application.writer_id);
+      if (application?.owner_id) participantIds.add(application.owner_id);
+
+      let ensuredUserId = fallbackUserId;
+      if (!ensuredUserId) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        ensuredUserId = user?.id ?? null;
+      }
+
+      if (ensuredUserId) participantIds.add(ensuredUserId);
+
+      if (participantIds.size === 0) {
+        return;
+      }
+
+      const rows = Array.from(participantIds).map((userId) => ({
+        conversation_id: conversationId,
+        user_id: userId,
+      }));
+
+      const { error: participantError } = await supabase
+        .from('conversation_participants')
+        .upsert(rows, { onConflict: 'conversation_id,user_id' });
+
+      if (participantError) {
+        console.error(
+          'Konuşma katılımcıları oluşturulamadı:',
+          participantError.message
+        );
+      }
+    }, []);
 
   useEffect(() => {
     let isActive = true;
@@ -86,51 +128,65 @@ export default function WriterMessagesPage() {
         const { data: ensuredConversation, error: ensureError } = await supabase
           .from('conversations')
           .upsert({ application_id: targetApplicationId }, { onConflict: 'application_id' })
-          .select('id')
+          .select('id, application_id')
           .maybeSingle();
 
         if (!isActive) return;
 
         if (!ensureError && ensuredConversation?.id) {
+          await ensureParticipantsForConversation(
+            ensuredConversation.id,
+            targetApplicationId,
+            user.id
+          );
           targetConversationId = ensuredConversation.id;
         }
       }
 
       const { data, error } = await supabase
-        .from('conversations')
+        .from('conversation_participants')
         .select(
           `
-          id,
-          created_at,
-          application:applications!inner(
-            id,
-            script:scripts(
+            conversation_id,
+            created_at,
+            conversation:conversations!inner (
               id,
-              title,
-              genre,
-              length,
-              price_cents,
-              created_at
-            ),
-            listing:v_listings_unified!inner(
-              id,
-              title,
-              genre,
-              budget_cents,
-              owner_id,
-              source,
-              created_at
-            ),
-            owner:users!applications_owner_id_fkey(
-              id,
-              email
-            ),
-            writer_id
-          )
-        `
+              created_at,
+              application:applications!inner (
+                id,
+                created_at,
+                status,
+                script:scripts!inner (
+                  id,
+                  title,
+                  genre,
+                  length,
+                  price_cents,
+                  created_at
+                ),
+                listing:v_listings_unified (
+                  id,
+                  title,
+                  genre,
+                  budget_cents,
+                  owner_id,
+                  source,
+                  created_at
+                ),
+                owner:users!applications_owner_id_fkey (
+                  id,
+                  email
+                ),
+                writer:users!applications_writer_id_fkey (
+                  id,
+                  email
+                )
+              )
+            )
+          `
         )
-        .eq('application.writer_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('user_id', user.id)
+        .order('conversation(created_at)', { ascending: false });
 
       if (!isActive) return;
 
@@ -142,24 +198,20 @@ export default function WriterMessagesPage() {
         return;
       }
 
-      const rows = ((data ?? []) as unknown) as ConversationRow[];
-
-      const mapped: ConversationSummary[] = rows.map((row) => {
-        const application = row.application;
-        const scriptData = application?.script;
-        const script = Array.isArray(scriptData) ? scriptData[0] : scriptData;
-        const listingData = application?.listing;
-        const listing = Array.isArray(listingData) ? listingData[0] : listingData;
-        const ownerData = application?.owner;
-        const owner = Array.isArray(ownerData) ? ownerData[0] : ownerData;
+      const mapped: ConversationSummary[] = (data ?? []).map((row: any) => {
+        const conversation = toSingle(row.conversation);
+        const application = toSingle(conversation?.application);
+        const script = toSingle(application?.script);
+        const listing = toSingle(application?.listing);
+        const owner = toSingle(application?.owner);
 
         return {
-          id: row.id,
-          createdAt: row.created_at,
-          applicationId: application?.id ?? '',
-          scriptTitle: script?.title ?? '—',
-          listingTitle: listing?.title ?? '—',
-          producerEmail: owner?.email ?? '—',
+          id: (conversation?.id as string) ?? (row.conversation_id as string),
+          createdAt: (conversation?.created_at as string) ?? (row.created_at as string),
+          applicationId: (application?.id as string) ?? '',
+          scriptTitle: (script?.title as string) ?? '—',
+          listingTitle: (listing?.title as string) ?? '—',
+          producerEmail: (owner?.email as string) ?? '—',
         };
       });
 
@@ -204,7 +256,12 @@ export default function WriterMessagesPage() {
     return () => {
       isActive = false;
     };
-  }, [applicationParam, conversationParam, router]);
+  }, [
+    applicationParam,
+    conversationParam,
+    ensureParticipantsForConversation,
+    router,
+  ]);
 
   useEffect(() => {
     if (!selectedConversationId) {
