@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
 import { supabase } from '@/lib/supabaseClient';
@@ -15,6 +16,7 @@ type ApplicationRow = {
   script_genre: string;
   length: number | null;
   price_cents: number | null;
+  conversation_id: string | null;
 };
 
 export default function ProducerApplicationsPage() {
@@ -42,11 +44,23 @@ export default function ProducerApplicationsPage() {
         status,
         created_at,
         listing_id,
+        producer_listing_id,
+        request_id,
+        owner_id,
+        producer_id,
         script_id,
+        script_metadata,
         listing:v_listings_unified!inner(id, title, owner_id, source),
-        scripts!inner(id, title, genre, length, price_cents)
+        scripts!inner(id, title, genre, length, price_cents),
+        conversations(id)
       `)
-      .eq('owner_id', user.id)
+      .or(
+        [
+          `and(listing_id.not.is.null,listing.owner_id.eq.${user.id})`,
+          `and(producer_listing_id.not.is.null,listing.owner_id.eq.${user.id})`,
+          `and(request_id.not.is.null,listing.owner_id.eq.${user.id})`,
+        ].join(',')
+      )
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -61,32 +75,79 @@ export default function ProducerApplicationsPage() {
         const script = Array.isArray(item.scripts)
           ? item.scripts[0]
           : item.scripts;
+        const conversation = Array.isArray(item.conversations)
+          ? item.conversations[0]
+          : item.conversations;
 
+        const scriptMetadata =
+          item.script_metadata && typeof item.script_metadata === 'object'
+            ? (item.script_metadata as Record<string, any>)
+            : null;
+
+        const rawLength =
+          script?.length ?? scriptMetadata?.length ?? null;
         const normalizedLength =
-          typeof script?.length === 'number'
-            ? script.length
-            : script?.length != null
-            ? Number(script.length)
+          typeof rawLength === 'number'
+            ? rawLength
+            : rawLength != null && !Number.isNaN(Number(rawLength))
+            ? Number(rawLength)
             : null;
 
+        const rawPrice =
+          script?.price_cents ?? scriptMetadata?.price_cents ?? null;
         const normalizedPrice =
-          typeof script?.price_cents === 'number'
-            ? script.price_cents
-            : script?.price_cents != null
-            ? Number(script.price_cents)
+          typeof rawPrice === 'number'
+            ? rawPrice
+            : rawPrice != null && !Number.isNaN(Number(rawPrice))
+            ? Number(rawPrice)
             : null;
+
+        const rawListingId =
+          item.listing_id ??
+          item.producer_listing_id ??
+          item.request_id ??
+          listing?.id ??
+          null;
+        const resolvedListingId =
+          rawListingId != null ? String(rawListingId) : '';
+
+        const rawScriptId =
+          item.script_id ?? script?.id ?? scriptMetadata?.id ?? null;
+        const resolvedScriptId =
+          rawScriptId != null ? String(rawScriptId) : '';
+
+        const scriptTitle =
+          (script?.title != null ? String(script.title) : null) ??
+          (scriptMetadata?.title != null
+            ? String(scriptMetadata.title)
+            : '');
+
+        const scriptGenre =
+          (script?.genre != null ? String(script.genre) : null) ??
+          (scriptMetadata?.genre != null
+            ? String(scriptMetadata.genre)
+            : '');
+
+        const listingTitle =
+          listing?.title != null ? String(listing.title) : '';
+
+        const applicationId =
+          item.id != null ? String(item.id) : '';
+
+        const status = item.status != null ? String(item.status) : '';
 
         return {
-          application_id: item.id,
-          status: item.status,
+          application_id: applicationId,
+          status,
           created_at: item.created_at,
-          listing_id: item.listing_id ?? listing?.id ?? '',
-          listing_title: listing?.title ?? '',
-          script_id: item.script_id ?? script?.id ?? '',
-          script_title: script?.title ?? '',
-          script_genre: script?.genre ?? '',
+          listing_id: resolvedListingId,
+          listing_title: listingTitle,
+          script_id: resolvedScriptId,
+          script_title: scriptTitle,
+          script_genre: scriptGenre,
           length: normalizedLength,
           price_cents: normalizedPrice,
+          conversation_id: conversation?.id ?? null,
         } as ApplicationRow;
       });
       setApplications(formatted);
@@ -123,16 +184,62 @@ export default function ProducerApplicationsPage() {
     let conversationError: string | null = null;
 
     if (decision === 'accepted') {
-      const { error: upsertError } = await supabase
-        .from('conversations')
-        .upsert(
-          { application_id: applicationId },
-          { onConflict: 'application_id' }
-        );
+      const { data: applicationData, error: applicationFetchError } = await supabase
+        .from('applications')
+        .select('writer_id, owner_id')
+        .eq('id', applicationId)
+        .single();
 
-      if (upsertError) {
-        console.error(upsertError);
-        conversationError = upsertError.message;
+      if (applicationFetchError) {
+        console.error(applicationFetchError);
+        conversationError = applicationFetchError.message;
+      } else {
+        const { data: conversationData, error: upsertError } = await supabase
+          .from('conversations')
+          .upsert(
+            { application_id: applicationId },
+            { onConflict: 'application_id' }
+          )
+          .select()
+          .single();
+
+        if (upsertError || !conversationData) {
+          console.error(upsertError);
+          conversationError = upsertError?.message || 'Sohbet oluşturulamadı';
+        } else {
+          const participants = [] as {
+            conversation_id: string;
+            user_id: string;
+            role: 'writer' | 'producer';
+          }[];
+
+          if (applicationData?.writer_id) {
+            participants.push({
+              conversation_id: conversationData.id,
+              user_id: applicationData.writer_id,
+              role: 'writer',
+            });
+          }
+
+          if (applicationData?.owner_id) {
+            participants.push({
+              conversation_id: conversationData.id,
+              user_id: applicationData.owner_id,
+              role: 'producer',
+            });
+          }
+
+          if (participants.length > 0) {
+            const { error: participantsError } = await supabase
+              .from('conversation_participants')
+              .upsert(participants, { onConflict: 'conversation_id,user_id' });
+
+            if (participantsError) {
+              console.error(participantsError);
+              conversationError = participantsError.message;
+            }
+          }
+        }
       }
     }
 
@@ -233,8 +340,24 @@ export default function ProducerApplicationsPage() {
 
                 {/* Sabit butonlar */}
                 <div className="mt-3 flex gap-2">
-                  <button className="btn btn-secondary">Mesaj Gönder</button>
-                  <button className="btn btn-primary">Detayları Gör</button>
+                  {app.conversation_id ? (
+                    <Link
+                      href={`/dashboard/producer/messages?c=${app.conversation_id}`}
+                      className="btn btn-primary"
+                    >
+                      Sohbeti Aç
+                    </Link>
+                  ) : (
+                    <span className="btn btn-secondary cursor-not-allowed opacity-60">
+                      Sohbet Bekleniyor
+                    </span>
+                  )}
+                  <Link
+                    href={`/dashboard/producer/listings/${app.listing_id}`}
+                    className="btn btn-secondary"
+                  >
+                    İlan Detayı
+                  </Link>
                 </div>
               </div>
             ))}

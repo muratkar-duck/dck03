@@ -19,6 +19,7 @@ export default function WriterNotificationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [row, setRow] = useState<Row | null>(null);
   const [loading, setLoading] = useState(true);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   useEffect(() => {
     const load = async () => {
       if (!id) {
@@ -82,6 +83,34 @@ export default function WriterNotificationDetailPage() {
           listing,
           producerEmail: producerData?.email ?? null,
         });
+
+        if (data.status === 'accepted') {
+          const {
+            data: ensuredConversation,
+            error: ensuredConversationError,
+          } = await supabase
+            .from('conversations')
+            .upsert(
+              { application_id: data.id },
+              { onConflict: 'application_id' }
+            )
+            .select('id')
+            .maybeSingle();
+
+          if (ensuredConversationError || !ensuredConversation?.id) {
+            if (ensuredConversationError) {
+              console.error(
+                'Konuşma oluşturulamadı:',
+                ensuredConversationError.message
+              );
+            }
+            setConversationId(null);
+          } else {
+            setConversationId(ensuredConversation.id);
+          }
+        } else {
+          setConversationId(null);
+        }
       }
       setLoading(false);
     };
@@ -121,10 +150,10 @@ export default function WriterNotificationDetailPage() {
             <p className="text-sm text-[#a38d6d]">Kayıt bulunamadı.</p>
           </div>
         ) : (
-          <div className="card space-y-2">
-            <p>
-              <strong>Yapımcı:</strong> {row.producerEmail || '—'}
-            </p>
+            <div className="card space-y-2">
+              <p>
+                <strong>Yapımcı:</strong> {row.producerEmail || '—'}
+              </p>
             <p>
               <strong>Senaryo:</strong> {row.script?.title || '—'}
             </p>
@@ -137,12 +166,23 @@ export default function WriterNotificationDetailPage() {
             </p>
 
             <div className="flex gap-2 pt-2">
-              <Link
-                href={`/dashboard/writer/messages?application=${row.id}`}
-                className="btn btn-primary"
-              >
-                💬 Sohbeti Aç
-              </Link>
+              {row.status === 'accepted' ? (
+                conversationId ? (
+                  <Link
+                    href={`/dashboard/writer/messages?c=${conversationId}`}
+                    className="btn btn-primary"
+                  >
+                    💬 Sohbeti Aç
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/dashboard/writer/notifications/${row.id}`}
+                    className="btn btn-primary"
+                  >
+                    💬 Sohbeti Başlat
+                  </Link>
+                )
+              ) : null}
               <Link
                 href={
                   row.listing?.id

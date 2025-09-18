@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import AuthGuard from '@/components/AuthGuard';
 import { usePlanData } from '@/hooks/usePlanData';
@@ -14,12 +15,33 @@ export default function ProducerBillingPage() {
 }
 
 function BillingContent() {
-  const { selection, loading } = usePlanData();
+  const { selection, loading, isSaving, updatePlan } = usePlanData();
+  const [actionError, setActionError] = useState<string | null>(null);
   const plan = selection ? getPlanById(selection.planId) : undefined;
 
   if (loading) {
     return <p className="text-center text-[#7a5c36]">Plan bilgilerin yükleniyor...</p>;
   }
+
+  const handleUpgrade = async () => {
+    setActionError(null);
+    try {
+      await updatePlan('top-tier');
+    } catch (error) {
+      console.error('Plan yükseltme başarısız:', error);
+      setActionError('Plan yükseltilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    }
+  };
+
+  const handleCancel = async () => {
+    setActionError(null);
+    try {
+      await updatePlan('student');
+    } catch (error) {
+      console.error('Plan iptali başarısız:', error);
+      setActionError('Plan iptal edilirken bir hata oluştu. Lütfen tekrar deneyin.');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -47,9 +69,21 @@ function BillingContent() {
           </p>
         )}
         <div className="flex gap-3 mt-2">
-          <button className="btn btn-secondary">Planı Yükselt</button>
-          <button className="btn btn-danger">İptal Et</button>
+          <button className="btn btn-secondary" onClick={handleUpgrade} disabled={isSaving}>
+            {isSaving ? 'Güncelleniyor...' : 'Planı Yükselt'}
+          </button>
+          <button className="btn btn-danger" onClick={handleCancel} disabled={isSaving}>
+            {isSaving ? 'Güncelleniyor...' : 'İptal Et'}
+          </button>
         </div>
+        {selection?.updatedAt && (
+          <p className="text-xs text-[#7a5c36]">Son güncelleme: {selection.updatedAt}</p>
+        )}
+        {actionError && (
+          <p role="alert" className="text-sm text-red-600">
+            {actionError}
+          </p>
+        )}
       </div>
 
       <div className="card space-y-2">

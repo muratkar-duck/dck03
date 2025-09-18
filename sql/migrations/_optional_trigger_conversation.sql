@@ -1,3 +1,4 @@
+
 -- Optional migration: manually apply if you want to automatically create a
 -- conversation (and participants, when supported) whenever an application's
 -- status transitions to "accepted".
