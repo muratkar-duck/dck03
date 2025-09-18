@@ -2,6 +2,11 @@ import type { Session } from '@supabase/supabase-js';
 
 export type PlanId = 'student' | 'basic' | 'pro' | 'top-tier';
 
+export function isPlanId(value: string | null | undefined): value is PlanId {
+  if (!value) return false;
+  return value === 'student' || value === 'basic' || value === 'pro' || value === 'top-tier';
+}
+
 export type Plan = {
   id: PlanId;
   name: string;
@@ -23,6 +28,8 @@ export type PlanSelection = {
   planId: PlanId;
   renewsAt: string | null;
   history: BillingHistoryEntry[];
+  updatedAt: string | null;
+  source: 'live' | 'default';
 };
 
 const PLANS: Plan[] = [
@@ -60,7 +67,7 @@ const PLANS: Plan[] = [
   },
 ];
 
-const ROLE_SELECTIONS: Record<string, PlanSelection> = {
+const DEFAULT_PLAN_SELECTIONS: Record<string, PlanSelection> = {
   writer: {
     planId: 'pro',
     renewsAt: '31 Ağustos 2025',
@@ -87,6 +94,8 @@ const ROLE_SELECTIONS: Record<string, PlanSelection> = {
         status: 'Ödendi',
       },
     ],
+    updatedAt: null,
+    source: 'default',
   },
   producer: {
     planId: 'basic',
@@ -114,6 +123,8 @@ const ROLE_SELECTIONS: Record<string, PlanSelection> = {
         status: 'Ödendi',
       },
     ],
+    updatedAt: null,
+    source: 'default',
   },
 };
 
@@ -135,11 +146,25 @@ export function getPlanById(planId: PlanId): Plan | undefined {
 }
 
 export function getSelectionForRole(role?: string | null): PlanSelection | null {
-  if (!role) return null;
-  return cloneSelection(ROLE_SELECTIONS[role] ?? null);
+  return getDefaultSelectionForRole(role);
 }
 
 export function getSelectionFromSession(session: Session | null): PlanSelection | null {
   const role = session?.user?.user_metadata?.role as string | undefined;
   return getSelectionForRole(role);
+}
+
+export function getDefaultSelectionForRole(role?: string | null): PlanSelection | null {
+  if (!role) return null;
+  return cloneSelection(DEFAULT_PLAN_SELECTIONS[role] ?? null);
+}
+
+export function createLivePlanSelection(planId: PlanId, updatedAt: string | null = null): PlanSelection {
+  return {
+    planId,
+    renewsAt: null,
+    history: [],
+    updatedAt,
+    source: 'live',
+  };
 }
