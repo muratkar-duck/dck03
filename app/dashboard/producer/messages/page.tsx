@@ -40,16 +40,17 @@ const toSingle = <T,>(value: T | T[] | null | undefined): T | null => {
   return Array.isArray(value) ? value[0] ?? null : value;
 };
 
-const normalizeConversationRow = (row: any): ConversationRecord => {
-  const application = toSingle(row.application);
+const normalizeConversationParticipant = (row: any): ConversationRecord => {
+  const conversation = toSingle(row.conversation);
+  const application = toSingle(conversation?.application);
   const script = toSingle(application?.script);
   const listing = toSingle(application?.listing);
   const writer = toSingle(application?.writer);
 
-  const applicationId = (application?.id || row.application_id || '') as string;
+  const applicationId = (application?.id || '') as string;
 
   return {
-    id: row.id as string,
+    id: (conversation?.id as string) ?? (row.conversation_id as string),
     applicationId,
     scriptTitle: (script?.title as string) ?? '—',
     scriptId: (script?.id as string) ?? null,
@@ -58,7 +59,7 @@ const normalizeConversationRow = (row: any): ConversationRecord => {
     writerEmail: (writer?.email as string) ?? null,
     writerId: (writer?.id as string) ?? null,
     status: (application?.status as string) ?? null,
-    createdAt: row.created_at as string,
+    createdAt: (conversation?.created_at as string) ?? (row.created_at as string),
     applicationCreatedAt: (application?.created_at as string) ?? null,
   };
 };
@@ -128,48 +129,51 @@ export default function ProducerMessagesPage() {
       setCurrentUserId(user.id);
 
       const { data, error } = await supabase
-        .from('conversations')
+        .from('conversation_participants')
         .select(
           `
-            id,
+            conversation_id,
             created_at,
-            application_id,
-            application:applications!inner (
+            conversation:conversations!inner (
               id,
-              status,
               created_at,
-              script:scripts!inner (
+              application:applications!inner (
                 id,
-                title,
-                genre,
-                length,
-                price_cents,
-                created_at
-              ),
-              listing:v_listings_unified!inner (
-                id,
-                title,
-                owner_id,
-                genre,
-                budget_cents,
+                status,
                 created_at,
-                source
-              ),
-              writer:users!inner (
-                id,
-                email
+                script:scripts!inner (
+                  id,
+                  title,
+                  genre,
+                  length,
+                  price_cents,
+                  created_at
+                ),
+                listing:v_listings_unified (
+                  id,
+                  title,
+                  owner_id,
+                  genre,
+                  budget_cents,
+                  created_at,
+                  source
+                ),
+                writer:users!inner (
+                  id,
+                  email
+                )
               )
             )
           `
         )
-        .eq('application.owner_id', user.id)
-        .order('created_at', { ascending: false });
+        .eq('user_id', user.id)
+        .order('conversation(created_at)', { ascending: false });
 
       if (error) {
         console.error('Konuşmalar alınamadı:', error.message);
         setConversations([]);
       } else {
-        const normalized = (data ?? []).map(normalizeConversationRow);
+        const normalized = (data ?? []).map(normalizeConversationParticipant);
         setConversations(normalized);
       }
     } finally {
@@ -181,6 +185,67 @@ export default function ProducerMessagesPage() {
     fetchConversations();
   }, [fetchConversations]);
 
+  const ensureParticipantsForConversation = useCallback(
+    async (
+      conversationId: string,
+      applicationId: string,
+      fallbackUserId: string | null
+    ) => {
+      try {
+        const { data: application, error: applicationError } = await supabase
+          .from('applications')
+          .select('id, writer_id, owner_id')
+          .eq('id', applicationId)
+          .maybeSingle();
+
+        if (applicationError) {
+          console.error(
+            'Konuşma katılımcıları için başvuru bilgisi alınamadı:',
+            applicationError.message
+          );
+          return;
+        }
+
+        const participantIds = new Set<string>();
+        if (application?.owner_id) participantIds.add(application.owner_id);
+        if (application?.writer_id) participantIds.add(application.writer_id);
+
+        let ensuredUserId = fallbackUserId;
+        if (!ensuredUserId) {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          ensuredUserId = user?.id ?? null;
+        }
+
+        if (ensuredUserId) participantIds.add(ensuredUserId);
+
+        if (participantIds.size === 0) {
+          return;
+        }
+
+        const rows = Array.from(participantIds).map((userId) => ({
+          conversation_id: conversationId,
+          user_id: userId,
+        }));
+
+        const { error: participantError } = await supabase
+          .from('conversation_participants')
+          .upsert(rows, { onConflict: 'conversation_id,user_id' });
+
+        if (participantError) {
+          console.error(
+            'Konuşma katılımcıları oluşturulamadı:',
+            participantError.message
+          );
+        }
+      } catch (error) {
+        console.error('Konuşma katılımcıları oluşturma hatası:', error);
+      }
+    },
+    []
+  );
+
   const ensureConversationForApplication = useCallback(
     async (applicationId: string) => {
       try {
@@ -190,7 +255,7 @@ export default function ProducerMessagesPage() {
             { application_id: applicationId },
             { onConflict: 'application_id' }
           )
-          .select('id')
+          .select('id, application_id')
           .maybeSingle();
 
         if (error) {
@@ -199,6 +264,11 @@ export default function ProducerMessagesPage() {
         }
 
         if (data?.id) {
+          await ensureParticipantsForConversation(
+            data.id,
+            applicationId,
+            currentUserId
+          );
           setSelectedConversationId(data.id);
           setUrlConversation(data.id);
         }
@@ -208,7 +278,12 @@ export default function ProducerMessagesPage() {
         console.error('Konuşma oluşturma hatası:', error);
       }
     },
-    [fetchConversations, setUrlConversation]
+    [
+      currentUserId,
+      ensureParticipantsForConversation,
+      fetchConversations,
+      setUrlConversation,
+    ]
   );
 
   useEffect(() => {
