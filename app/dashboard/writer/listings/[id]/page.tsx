@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
@@ -41,6 +41,33 @@ export default function ListingDetailPage() {
   const [existingApplication, setExistingApplication] =
     useState<ListingApplication | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const previousScriptIdsRef = useRef<Set<string>>(new Set());
+  const previousMatchingCountRef = useRef(0);
+  const listingRef = useRef<Listing | null>(null);
+
+  const normalizeGenre = (genre: string | null | undefined) =>
+    genre?.trim().toLowerCase() ?? '';
+
+  useEffect(() => {
+    listingRef.current = listing;
+
+    if (!listing) {
+      previousMatchingCountRef.current = 0;
+      return;
+    }
+
+    const listingGenre = normalizeGenre(listing.genre);
+    const matchingCount = scripts.filter(
+      (script) => normalizeGenre(script.genre) === listingGenre
+    ).length;
+
+    previousMatchingCountRef.current = matchingCount;
+  }, [listing, scripts]);
+
+  useEffect(() => {
+    previousScriptIdsRef.current = new Set();
+    previousMatchingCountRef.current = 0;
+  }, [id]);
 
   useEffect(() => {
     const fetchListing = async () => {
@@ -65,8 +92,8 @@ export default function ListingDetailPage() {
     fetchListing();
   }, [id]);
 
-  useEffect(() => {
-    const fetchWriterResources = async () => {
+  const fetchWriterResources = useCallback(
+    async (options?: { reason?: 'initial' | 'visibility' }) => {
       if (!id) return;
 
       const {
@@ -90,9 +117,36 @@ export default function ListingDetailPage() {
         console.error(scriptError.message);
         setScripts([]);
         setSelectedScript('');
+        previousScriptIdsRef.current = new Set();
+        previousMatchingCountRef.current = 0;
       } else {
         const typedScripts = (scriptData as WriterScriptOption[]) || [];
         setScripts(typedScripts);
+
+        const hasNewScript = typedScripts.some(
+          (script) => !previousScriptIdsRef.current.has(script.id)
+        );
+
+        const listingGenre = normalizeGenre(listingRef.current?.genre);
+        const matchingCount = listingGenre
+          ? typedScripts.filter(
+              (script) => normalizeGenre(script.genre) === listingGenre
+            ).length
+          : 0;
+
+        if (
+          options?.reason === 'visibility' &&
+          hasNewScript &&
+          matchingCount > 0 &&
+          previousMatchingCountRef.current === 0
+        ) {
+          alert('🎉 Senaryo eklendi! Uygun türdeki seçenek otomatik olarak seçildi.');
+        }
+
+        previousScriptIdsRef.current = new Set(
+          typedScripts.map((script) => script.id)
+        );
+        previousMatchingCountRef.current = matchingCount;
       }
 
       const { data: appData, error: appError } = await supabase
@@ -120,20 +174,35 @@ export default function ListingDetailPage() {
       } else {
         setExistingApplication(null);
       }
+    },
+    [id]
+  );
+
+  useEffect(() => {
+    fetchWriterResources({ reason: 'initial' });
+  }, [fetchWriterResources]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchWriterResources({ reason: 'visibility' });
+      }
     };
 
-    fetchWriterResources();
-  }, [id]);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchWriterResources]);
 
   const matchingScripts = useMemo(() => {
     if (!listing) return [] as WriterScriptOption[];
 
-    const listingGenre = listing.genre?.trim().toLowerCase() ?? '';
+    const listingGenre = normalizeGenre(listing.genre);
 
-    return scripts.filter((script) => {
-      const scriptGenre = script.genre?.trim().toLowerCase() ?? '';
-      return scriptGenre === listingGenre;
-    });
+    return scripts.filter(
+      (script) => normalizeGenre(script.genre) === listingGenre
+    );
   }, [listing, scripts]);
 
   useEffect(() => {
