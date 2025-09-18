@@ -158,7 +158,7 @@ export default function ProducerMessagesPage() {
                   created_at,
                   source
                 ),
-                writer:users!inner (
+                writer:users!applications_writer_id_fkey!inner (
                   id,
                   email
                 )
