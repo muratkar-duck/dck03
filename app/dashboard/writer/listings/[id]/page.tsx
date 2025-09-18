@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import type { Listing } from '@/types/db';
@@ -311,14 +312,32 @@ export default function ListingDetailPage() {
             ))}
           </select>
           {scripts.length === 0 && (
-            <p className="text-xs text-[#a38d6d]">
-              Henüz kaydedilmiş bir senaryon bulunmuyor.
-            </p>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-[#a38d6d]">
+                Henüz kaydedilmiş bir senaryon bulunmuyor. Yeni bir senaryo
+                oluşturarak ilana uygun bir başvuru yapabilirsin.
+              </p>
+              <Link
+                className="btn btn-secondary w-fit"
+                href="/dashboard/writer/scripts/new"
+              >
+                Yeni Senaryo Oluştur
+              </Link>
+            </div>
           )}
           {scripts.length > 0 && matchingScripts.length === 0 && (
-            <p className="text-xs text-[#a38d6d]">
-              Bu ilanın türüyle eşleşen kayıtlı bir senaryon bulunmuyor.
-            </p>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-[#a38d6d]">
+                Bu ilanın türüyle eşleşen bir senaryon bulunmuyor. Aşağıdaki
+                butonla yeni ve uygun türde bir senaryo oluşturabilirsin.
+              </p>
+              <Link
+                className="btn btn-secondary w-fit"
+                href="/dashboard/writer/scripts/new"
+              >
+                Yeni Senaryo Oluştur
+              </Link>
+            </div>
           )}
           <button
             className="btn btn-primary"
