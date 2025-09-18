@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
 import { supabase } from '@/lib/supabaseClient';
@@ -15,6 +16,7 @@ type ApplicationRow = {
   script_genre: string;
   length: number | null;
   price_cents: number | null;
+  conversation_id: string | null;
 };
 
 export default function ProducerApplicationsPage() {
@@ -44,7 +46,8 @@ export default function ProducerApplicationsPage() {
         listing_id,
         script_id,
         listing:v_listings_unified!inner(id, title, owner_id, source),
-        scripts!inner(id, title, genre, length, price_cents)
+        scripts!inner(id, title, genre, length, price_cents),
+        conversations(id)
       `)
       .eq('owner_id', user.id)
       .order('created_at', { ascending: false });
@@ -61,6 +64,9 @@ export default function ProducerApplicationsPage() {
         const script = Array.isArray(item.scripts)
           ? item.scripts[0]
           : item.scripts;
+        const conversation = Array.isArray(item.conversations)
+          ? item.conversations[0]
+          : item.conversations;
 
         const normalizedLength =
           typeof script?.length === 'number'
@@ -87,6 +93,7 @@ export default function ProducerApplicationsPage() {
           script_genre: script?.genre ?? '',
           length: normalizedLength,
           price_cents: normalizedPrice,
+          conversation_id: conversation?.id ?? null,
         } as ApplicationRow;
       });
       setApplications(formatted);
@@ -123,16 +130,62 @@ export default function ProducerApplicationsPage() {
     let conversationError: string | null = null;
 
     if (decision === 'accepted') {
-      const { error: upsertError } = await supabase
-        .from('conversations')
-        .upsert(
-          { application_id: applicationId },
-          { onConflict: 'application_id' }
-        );
+      const { data: applicationData, error: applicationFetchError } = await supabase
+        .from('applications')
+        .select('writer_id, owner_id')
+        .eq('id', applicationId)
+        .single();
 
-      if (upsertError) {
-        console.error(upsertError);
-        conversationError = upsertError.message;
+      if (applicationFetchError) {
+        console.error(applicationFetchError);
+        conversationError = applicationFetchError.message;
+      } else {
+        const { data: conversationData, error: upsertError } = await supabase
+          .from('conversations')
+          .upsert(
+            { application_id: applicationId },
+            { onConflict: 'application_id' }
+          )
+          .select()
+          .single();
+
+        if (upsertError || !conversationData) {
+          console.error(upsertError);
+          conversationError = upsertError?.message || 'Sohbet oluşturulamadı';
+        } else {
+          const participants = [] as {
+            conversation_id: string;
+            user_id: string;
+            role: 'writer' | 'producer';
+          }[];
+
+          if (applicationData?.writer_id) {
+            participants.push({
+              conversation_id: conversationData.id,
+              user_id: applicationData.writer_id,
+              role: 'writer',
+            });
+          }
+
+          if (applicationData?.owner_id) {
+            participants.push({
+              conversation_id: conversationData.id,
+              user_id: applicationData.owner_id,
+              role: 'producer',
+            });
+          }
+
+          if (participants.length > 0) {
+            const { error: participantsError } = await supabase
+              .from('conversation_participants')
+              .upsert(participants, { onConflict: 'conversation_id,user_id' });
+
+            if (participantsError) {
+              console.error(participantsError);
+              conversationError = participantsError.message;
+            }
+          }
+        }
       }
     }
 
@@ -233,8 +286,24 @@ export default function ProducerApplicationsPage() {
 
                 {/* Sabit butonlar */}
                 <div className="mt-3 flex gap-2">
-                  <button className="btn btn-secondary">Mesaj Gönder</button>
-                  <button className="btn btn-primary">Detayları Gör</button>
+                  {app.conversation_id ? (
+                    <Link
+                      href={`/dashboard/producer/messages?c=${app.conversation_id}`}
+                      className="btn btn-primary"
+                    >
+                      Sohbeti Aç
+                    </Link>
+                  ) : (
+                    <span className="btn btn-secondary cursor-not-allowed opacity-60">
+                      Sohbet Bekleniyor
+                    </span>
+                  )}
+                  <Link
+                    href={`/dashboard/producer/listings/${app.listing_id}`}
+                    className="btn btn-secondary"
+                  >
+                    İlan Detayı
+                  </Link>
                 </div>
               </div>
             ))}
