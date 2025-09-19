@@ -13,11 +13,12 @@ type ConversationResult = {
 
 export const ensureConversationWithParticipants = async (
   client: SupabaseClient,
-  applicationId: string
+  applicationId: string,
+  actingUserId?: string | null
 ): Promise<ConversationResult> => {
   const { data: applicationData, error: applicationFetchError } = await client
     .from('applications')
-    .select('writer_id, producer_id')
+    .select('writer_id, producer_id, user_id, owner_id')
     .eq('id', applicationId)
     .single();
 
@@ -42,23 +43,53 @@ export const ensureConversationWithParticipants = async (
     };
   }
 
-  const participants: ConversationParticipant[] = [];
+  const participantRoles = new Map<string, ConversationParticipant['role']>();
 
-  if (applicationData?.writer_id) {
-    participants.push({
-      conversation_id: conversationData.id,
-      user_id: applicationData.writer_id,
-      role: 'writer',
-    });
+  const addParticipant = (
+    userId: string | null | undefined,
+    role: ConversationParticipant['role']
+  ) => {
+    if (!userId) {
+      return;
+    }
+
+    const existingRole = participantRoles.get(userId);
+
+    if (!existingRole) {
+      participantRoles.set(userId, role);
+      return;
+    }
+
+    if (existingRole === 'producer' && role === 'writer') {
+      participantRoles.set(userId, role);
+    }
+  };
+
+  const writerCandidates = [applicationData?.writer_id, applicationData?.user_id];
+  const producerCandidates = [
+    applicationData?.producer_id,
+    applicationData?.owner_id,
+  ];
+
+  writerCandidates.forEach((candidate) => addParticipant(candidate, 'writer'));
+  producerCandidates.forEach((candidate) =>
+    addParticipant(candidate, 'producer')
+  );
+
+  if (actingUserId) {
+    const actingRole = writerCandidates.includes(actingUserId)
+      ? 'writer'
+      : 'producer';
+    addParticipant(actingUserId, actingRole);
   }
 
-  if (applicationData?.producer_id) {
-    participants.push({
-      conversation_id: conversationData.id,
-      user_id: applicationData.producer_id,
-      role: 'producer',
-    });
-  }
+  const participants: ConversationParticipant[] = Array.from(
+    participantRoles.entries()
+  ).map(([userId, role]) => ({
+    conversation_id: conversationData.id,
+    user_id: userId,
+    role,
+  }));
 
   if (participants.length > 0) {
     const { error: participantsError } = await client
