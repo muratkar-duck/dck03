@@ -10,4 +10,4 @@ alter table public.conversation_participants enable row level security;
 create unique index if not exists conversation_participants_conversation_id_user_id_idx
   on public.conversation_participants (conversation_id, user_id);
 
-\\ir ../../sql/migrations/mvp_cp_policies.sql
+\ir ../../sql/migrations/mvp_cp_policies.sql
