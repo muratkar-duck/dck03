@@ -28,18 +28,24 @@ type ScriptStat = {
 type ListingRow = {
   id: string;
   title: string;
+  genre: string | null;
+  budget_cents: number | null;
+  created_at: string | null;
+  source: string | null;
 };
 
 type ApplicationQueryRow = {
   id: string;
+  listing_id: string | null;
   status: string | null;
-  listing?: ListingRow | ListingRow[] | null;
 };
 
 type ApplicationSummary = {
   id: string;
   status: string;
+  listingId: string | null;
   listingTitle: string;
+  listing: ListingRow | null;
 };
 
 const APPLICATION_STATUS_LABELS: Record<string, string> = {
@@ -67,14 +73,6 @@ const toArray = <T,>(value: T | T[] | null | undefined): T[] => {
   }
 
   return Array.isArray(value) ? value : [value];
-};
-
-const toSingle = <T,>(value: T | T[] | null | undefined): T | null => {
-  if (!value) {
-    return null;
-  }
-
-  return Array.isArray(value) ? value[0] ?? null : value;
 };
 
 const getStatusLabel = (status: string) =>
@@ -154,18 +152,8 @@ export default function WriterDashboardPage() {
             `
               id,
               listing_id,
-              writer_id,
-              script_id,
               status,
-              created_at,
-              listing:v_listings_unified!inner (
-                id,
-                title,
-                genre,
-                budget_cents,
-                created_at,
-                source
-              )
+              created_at
             `
           )
           .eq('writer_id', user.id)
@@ -175,16 +163,44 @@ export default function WriterDashboardPage() {
           throw applicationError;
         }
 
-        const normalizedApplications =
-          (applicationData as ApplicationQueryRow[] | null)?.map((app) => {
-            const listing = toSingle(app.listing);
+        const applicationRows = (applicationData as ApplicationQueryRow[] | null) ?? [];
+        const listingIds = Array.from(
+          new Set(
+            applicationRows
+              .map((app) => app.listing_id)
+              .filter((id): id is string => typeof id === 'string' && id.length > 0)
+          )
+        );
 
-            return {
-              id: app.id,
-              status: app.status ?? 'pending',
-              listingTitle: listing?.title ?? '—',
-            };
-          }) ?? [];
+        let listingsById = new Map<string, ListingRow>();
+
+        if (listingIds.length > 0) {
+          const { data: listingsData, error: listingsError } = await supabase
+            .from('v_listings_unified')
+            .select('id,title,genre,budget_cents,created_at,source')
+            .in('id', listingIds);
+
+          if (listingsError) {
+            throw listingsError;
+          }
+
+          const listings = (listingsData as ListingRow[] | null) ?? [];
+          listingsById = new Map(listings.map((listing) => [listing.id, listing]));
+        }
+
+        const normalizedApplications = applicationRows.map((app) => {
+          const listing = app.listing_id
+            ? listingsById.get(app.listing_id) ?? null
+            : null;
+
+          return {
+            id: app.id,
+            status: app.status ?? 'pending',
+            listingId: app.listing_id,
+            listingTitle: listing?.title ?? '—',
+            listing,
+          };
+        });
 
         if (isMounted) {
           setScriptStats(normalizedScripts);
