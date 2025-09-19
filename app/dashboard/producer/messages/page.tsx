@@ -84,7 +84,8 @@ export default function ProducerMessagesPage() {
 
   const setUrlConversation = useCallback(
     (conversationId: string | null) => {
-      const currentConversation = searchParams.get('conversation');
+      const currentConversation =
+        searchParams.get('c') ?? searchParams.get('conversation');
       const currentApplication = searchParams.get('application');
 
       if (
@@ -97,11 +98,12 @@ export default function ProducerMessagesPage() {
       const params = new URLSearchParams(searchParams.toString());
 
       if (conversationId) {
-        params.set('conversation', conversationId);
+        params.set('c', conversationId);
       } else {
-        params.delete('conversation');
+        params.delete('c');
       }
 
+      params.delete('conversation');
       params.delete('application');
 
       const query = params.toString();
@@ -317,7 +319,8 @@ export default function ProducerMessagesPage() {
       return;
     }
 
-    const conversationParam = searchParams.get('conversation');
+    const conversationParam =
+      searchParams.get('c') ?? searchParams.get('conversation');
     const applicationParam = searchParams.get('application');
 
     if (conversationParam) {

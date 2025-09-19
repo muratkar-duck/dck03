@@ -30,7 +30,8 @@ const toSingle = <T,>(value: T | T[] | null | undefined): T | null => {
 export default function WriterMessagesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const conversationParam = searchParams?.get('conversation') ?? null;
+  const conversationParam =
+    searchParams?.get('c') ?? searchParams?.get('conversation') ?? null;
   const applicationParam = searchParams?.get('application') ?? null;
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -239,7 +240,7 @@ export default function WriterMessagesPage() {
       if (targetApplicationId || conversationParam !== nextSelectedId) {
         const params = new URLSearchParams();
         if (nextSelectedId) {
-          params.set('conversation', nextSelectedId);
+          params.set('c', nextSelectedId);
         }
         const query = params.toString();
         router.replace(
