@@ -10,24 +10,24 @@ security definer
 set search_path = public
 as $$
 declare
-  conversation_id uuid;
+  v_conversation_id uuid;
 begin
   if new.status = 'accepted' then
     if tg_op <> 'INSERT' and old.status is not distinct from new.status then
       return new;
     end if;
 
-    select id into conversation_id
+    select id into v_conversation_id
     from public.conversations
     where application_id = new.id;
 
-    if conversation_id is null then
+    if v_conversation_id is null then
       insert into public.conversations (application_id)
       values (new.id)
-      returning id into conversation_id;
+      returning id into v_conversation_id;
     end if;
 
-    if conversation_id is not null and exists (
+    if v_conversation_id is not null and exists (
       select 1
       from information_schema.tables
       where table_schema = 'public'
@@ -35,17 +35,21 @@ begin
     ) then
       if new.writer_id is not null then
         insert into public.conversation_participants (conversation_id, user_id, role)
-        values (conversation_id, new.writer_id, 'writer')
+        values (v_conversation_id, new.writer_id, 'writer')
         on conflict (conversation_id, user_id) do nothing;
       elsif new.user_id is not null then
         insert into public.conversation_participants (conversation_id, user_id, role)
-        values (conversation_id, new.user_id, 'writer')
+        values (v_conversation_id, new.user_id, 'writer')
         on conflict (conversation_id, user_id) do nothing;
       end if;
 
-      if new.producer_id is not null then
+      if new.owner_id is not null then
         insert into public.conversation_participants (conversation_id, user_id, role)
-        values (conversation_id, new.producer_id, 'producer')
+        values (v_conversation_id, new.owner_id, 'producer')
+        on conflict (conversation_id, user_id) do nothing;
+      elsif new.producer_id is not null then
+        insert into public.conversation_participants (conversation_id, user_id, role)
+        values (v_conversation_id, new.producer_id, 'producer')
         on conflict (conversation_id, user_id) do nothing;
       end if;
     end if;
