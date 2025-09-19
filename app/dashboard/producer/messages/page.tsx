@@ -194,7 +194,7 @@ export default function ProducerMessagesPage() {
       try {
         const { data: application, error: applicationError } = await supabase
           .from('applications')
-          .select('id, writer_id, owner_id')
+          .select('id, writer_id, producer_id')
           .eq('id', applicationId)
           .maybeSingle();
 
@@ -207,7 +207,7 @@ export default function ProducerMessagesPage() {
         }
 
         const participantIds = new Set<string>();
-        if (application?.owner_id) participantIds.add(application.owner_id);
+        if (application?.producer_id) participantIds.add(application.producer_id);
         if (application?.writer_id) participantIds.add(application.writer_id);
 
         let ensuredUserId = fallbackUserId;

@@ -43,11 +43,7 @@ begin
         on conflict (conversation_id, user_id) do nothing;
       end if;
 
-      if new.owner_id is not null then
-        insert into public.conversation_participants (conversation_id, user_id, role)
-        values (conversation_id, new.owner_id, 'producer')
-        on conflict (conversation_id, user_id) do nothing;
-      elsif new.producer_id is not null then
+      if new.producer_id is not null then
         insert into public.conversation_participants (conversation_id, user_id, role)
         values (conversation_id, new.producer_id, 'producer')
         on conflict (conversation_id, user_id) do nothing;
