@@ -54,6 +54,7 @@ export default function ProducerListingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!listingId) return;
@@ -78,6 +79,8 @@ export default function ProducerListingDetailPage() {
         if (!user) {
           throw new Error('Giriş yapmanız gerekiyor.');
         }
+
+        setCurrentUserId(user.id);
 
         const { data: listingData, error: listingError } = await supabase
           .from('v_listings_unified')
@@ -208,9 +211,39 @@ export default function ProducerListingDetailPage() {
     let conversationError: string | null = null;
     let conversationId: string | null = null;
 
+    let actingUserId = currentUserId;
+
     if (decision === 'accepted') {
+      if (!actingUserId) {
+        const {
+          data: { user: freshUser },
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        if (authError) {
+          alert('❌ Oturum doğrulanamadı: ' + authError.message);
+          setUpdatingId(null);
+          return;
+        }
+
+        if (!freshUser) {
+          alert('❌ Oturum doğrulanamadı. Lütfen tekrar giriş yapın.');
+          setUpdatingId(null);
+          return;
+        }
+
+        actingUserId = freshUser.id;
+        setCurrentUserId(freshUser.id);
+      }
+    }
+
+    if (decision === 'accepted' && actingUserId) {
       const { conversationId: ensuredConversationId, error } =
-        await ensureConversationWithParticipants(supabase, applicationId);
+        await ensureConversationWithParticipants(
+          supabase,
+          applicationId,
+          actingUserId
+        );
       conversationError = error;
       conversationId = ensuredConversationId;
     }

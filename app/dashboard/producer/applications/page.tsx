@@ -25,6 +25,7 @@ export default function ProducerApplicationsPage() {
   const router = useRouter();
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchApplications();
@@ -39,6 +40,8 @@ export default function ProducerApplicationsPage() {
       setLoading(false);
       return;
     }
+
+    setCurrentUserId(user.id);
 
     const { data, error } = await supabase
       .from('applications')
@@ -188,9 +191,37 @@ export default function ProducerApplicationsPage() {
 
     let conversationId: string | null = null;
 
+    let actingUserId = currentUserId;
+
     if (decision === 'accepted') {
+      if (!actingUserId) {
+        const {
+          data: { user: freshUser },
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        if (authError) {
+          alert('❌ Oturum doğrulanamadı: ' + authError.message);
+          return;
+        }
+
+        if (!freshUser) {
+          alert('❌ Oturum doğrulanamadı. Lütfen tekrar giriş yapın.');
+          return;
+        }
+
+        actingUserId = freshUser.id;
+        setCurrentUserId(freshUser.id);
+      }
+    }
+
+    if (decision === 'accepted' && actingUserId) {
       const { conversationId: ensuredConversationId, error } =
-        await ensureConversationWithParticipants(supabase, applicationId);
+        await ensureConversationWithParticipants(
+          supabase,
+          applicationId,
+          actingUserId
+        );
       conversationError = error;
       conversationId = ensuredConversationId;
     }
