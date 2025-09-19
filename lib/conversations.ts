@@ -17,7 +17,7 @@ export const ensureConversationWithParticipants = async (
 ): Promise<ConversationResult> => {
   const { data: applicationData, error: applicationFetchError } = await client
     .from('applications')
-    .select('writer_id, owner_id')
+    .select('writer_id, producer_id')
     .eq('id', applicationId)
     .single();
 
@@ -52,10 +52,10 @@ export const ensureConversationWithParticipants = async (
     });
   }
 
-  if (applicationData?.owner_id) {
+  if (applicationData?.producer_id) {
     participants.push({
       conversation_id: conversationData.id,
-      user_id: applicationData.owner_id,
+      user_id: applicationData.producer_id,
       role: 'producer',
     });
   }
