@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { ensureConversationWithParticipants } from '@/lib/conversations';
 import { supabase } from '@/lib/supabaseClient';
@@ -21,6 +22,7 @@ type ApplicationRow = {
 };
 
 export default function ProducerApplicationsPage() {
+  const router = useRouter();
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -184,12 +186,13 @@ export default function ProducerApplicationsPage() {
 
     let conversationError: string | null = null;
 
+    let conversationId: string | null = null;
+
     if (decision === 'accepted') {
-      const { error } = await ensureConversationWithParticipants(
-        supabase,
-        applicationId
-      );
+      const { conversationId: ensuredConversationId, error } =
+        await ensureConversationWithParticipants(supabase, applicationId);
       conversationError = error;
+      conversationId = ensuredConversationId;
     }
 
     if (conversationError) {
@@ -200,7 +203,16 @@ export default function ProducerApplicationsPage() {
       );
     }
 
-    fetchApplications(); // Listeyi yenile
+    if (decision === 'accepted' && conversationId) {
+      try {
+        await router.push(`/dashboard/producer/messages?c=${conversationId}`);
+        return;
+      } catch (navigationError) {
+        console.error('Failed to navigate to conversation view:', navigationError);
+      }
+    }
+
+    fetchApplications(); // Listeyi yenile veya yönlendirme başarısız olursa yedek
   };
 
   const getBadge = (status: string) => {
