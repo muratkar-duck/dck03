@@ -44,7 +44,7 @@ export default function WriterNotificationsPage() {
           status,
           created_at,
           script:scripts ( id, title, genre, length, price_cents, created_at ),
-          producer:users!applications_owner_id_fkey ( id, email )
+          producer:users!applications_producer_id_fkey ( id, email )
         `
       )
       .eq('writer_id', user.id)

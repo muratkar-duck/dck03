@@ -174,7 +174,7 @@ export default function WriterMessagesPage() {
                   source,
                   created_at
                 ),
-                owner:users!applications_owner_id_fkey (
+                producer:users!applications_producer_id_fkey (
                   id,
                   email
                 ),
@@ -204,7 +204,7 @@ export default function WriterMessagesPage() {
         const application = toSingle(conversation?.application);
         const script = toSingle(application?.script);
         const listing = toSingle(application?.listing);
-        const owner = toSingle(application?.owner);
+        const producer = toSingle(application?.producer);
 
         return {
           id: (conversation?.id as string) ?? (row.conversation_id as string),
@@ -212,7 +212,7 @@ export default function WriterMessagesPage() {
           applicationId: (application?.id as string) ?? '',
           scriptTitle: (script?.title as string) ?? '—',
           listingTitle: (listing?.title as string) ?? '—',
-          producerEmail: (owner?.email as string) ?? '—',
+          producerEmail: (producer?.email as string) ?? '—',
         };
       });
 
