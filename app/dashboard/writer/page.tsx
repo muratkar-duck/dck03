@@ -121,7 +121,7 @@ export default function WriterDashboardPage() {
           .select(
             'id,title,genre,length,price_cents,created_at,orders(amount_cents)'
           )
-          .eq('owner_id', user.id)
+          .or(`owner_id.eq.${user.id},user_id.eq.${user.id}`)
           .order('created_at', { ascending: false });
 
         if (scriptError) {
