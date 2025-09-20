@@ -22,8 +22,13 @@ export default function RootLayout({
 
         <main className="max-w-7xl mx-auto px-4 py-10">{children}</main>
 
-        <footer className="text-center text-sm py-6 text-[#7a5c36] opacity-80">
-          © 2025 ducktylo. Tüm hakları saklıdır.
+        <footer
+          className="bg-forest text-brand py-4"
+          data-test-id="app-footer"
+        >
+          <div className="mx-auto max-w-7xl px-4 text-center text-sm opacity-80">
+            © 2025 ducktylo. Tüm hakları saklıdır.
+          </div>
         </footer>
       </body>
     </html>

@@ -166,18 +166,22 @@ export default function ProducerNotificationsPage() {
     <AuthGuard allowedRoles={['producer']}>
       <div className="space-y-4">
         <h1 className="text-2xl font-bold">🔔 Bildirimler (Yapımcı)</h1>
-        <p className="text-[#7a5c36]">
-          İlanlarınıza gelen <strong>bekleyen</strong> başvurular.
-        </p>
+        {items.length > 0 && (
+          <p className="text-[#7a5c36]">
+            İlanlarınıza gelen <strong>bekleyen</strong> başvurular.
+          </p>
+        )}
 
         {loading ? (
           <p className="text-sm text-[#a38d6d]">Yükleniyor…</p>
         ) : items.length === 0 ? (
           <div className="card">
-            <p className="text-sm text-[#a38d6d]">Şimdilik bildiriminiz yok.</p>
+            <p className="text-sm text-[#a38d6d]">
+              Şu anda <strong>bekleyen</strong> başvurunuz bulunmuyor.
+            </p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" data-test-id="producer-notifications">
             {items.map((r) => (
               <div
                 key={r.id}
