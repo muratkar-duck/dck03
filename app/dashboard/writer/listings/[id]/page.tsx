@@ -183,6 +183,39 @@ export default function ListingDetailPage() {
   }, [fetchWriterResources]);
 
   useEffect(() => {
+    const runRefreshCheck = () => {
+      if (typeof window === 'undefined') return;
+
+      const shouldRefresh = window.sessionStorage.getItem(
+        'writerRefreshScriptsAfterNew'
+      );
+
+      if (shouldRefresh) {
+        window.sessionStorage.removeItem('writerRefreshScriptsAfterNew');
+        fetchWriterResources({ reason: 'visibility' });
+      }
+    };
+
+    runRefreshCheck();
+
+    const handleFocus = () => {
+      runRefreshCheck();
+    };
+
+    const handlePopState = () => {
+      runRefreshCheck();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [fetchWriterResources]);
+
+  useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         fetchWriterResources({ reason: 'visibility' });
@@ -342,6 +375,18 @@ export default function ListingDetailPage() {
   if (loading) return <p className="text-sm text-gray-500">Yükleniyor...</p>;
   if (!listing) return <p className="text-sm text-red-500">İlan bulunamadı.</p>;
 
+  const hasScripts = scripts.length > 0;
+  const hasMatchingScripts = matchingScripts.length > 0;
+
+  const matchingStateTestId = hasMatchingScripts
+    ? 'matching-state-has-matches'
+    : 'matching-state-empty';
+
+  const handleNewScriptClick = () => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem('writerRefreshScriptsAfterNew', 'true');
+  };
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">🎬 {listing.title}</h1>
@@ -352,78 +397,64 @@ export default function ListingDetailPage() {
         <p className="text-[#4a3d2f]">
           {listing.description || 'Açıklama bulunamadı.'}
         </p>
-        <div className="pt-4 space-y-3 border-t border-[#f3e5ab]">
-          <label
-            className="text-sm font-semibold text-[#4a3d2f]"
-            htmlFor="script-select"
-          >
-            Senaryonu Seç
-          </label>
-          <select
-            id="script-select"
-            className="w-full p-2 border rounded-lg bg-white"
-            value={selectedScript}
-            onChange={(event) => setSelectedScript(event.target.value)}
-            disabled={
-              !!existingApplication ||
-              submitting ||
-              scripts.length === 0 ||
-              matchingScripts.length === 0
-            }
-          >
-            <option value="" disabled>
-              Bir senaryo seçin
-            </option>
-            {matchingScripts.map((script) => (
-              <option key={script.id} value={script.id}>
-                {script.title}
-              </option>
-            ))}
-          </select>
-          {scripts.length === 0 && (
+        <div
+          className="pt-4 space-y-3 border-t border-[#f3e5ab]"
+          data-test-id={matchingStateTestId}
+        >
+          {hasMatchingScripts ? (
+            <>
+              <label
+                className="text-sm font-semibold text-[#4a3d2f]"
+                htmlFor="script-select"
+              >
+                Senaryonu Seç
+              </label>
+              <select
+                id="script-select"
+                className="w-full p-2 border rounded-lg bg-white"
+                value={selectedScript}
+                onChange={(event) => setSelectedScript(event.target.value)}
+                disabled={!!existingApplication || submitting}
+              >
+                <option value="" disabled>
+                  Bir senaryo seçin
+                </option>
+                {matchingScripts.map((script) => (
+                  <option key={script.id} value={script.id}>
+                    {script.title}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn btn-primary"
+                onClick={handleApply}
+                disabled={
+                  !!existingApplication || !selectedScript || submitting
+                }
+              >
+                {submitting ? 'Gönderiliyor...' : 'Senaryomla Başvur'}
+              </button>
+              {existingApplication && (
+                <p className="text-xs text-[#a38d6d]">
+                  Bu ilana zaten başvurdun. Durum: {existingApplication.status}
+                </p>
+              )}
+            </>
+          ) : (
             <div className="flex flex-col gap-2">
               <p className="text-xs text-[#a38d6d]">
-                Henüz kaydedilmiş bir senaryon bulunmuyor. Yeni bir senaryo
-                oluşturarak ilana uygun bir başvuru yapabilirsin.
+                {hasScripts
+                  ? 'Bu ilanın türüyle eşleşen bir senaryon bulunmuyor. Aşağıdaki butonla yeni ve uygun türde bir senaryo oluşturabilirsin.'
+                  : 'Henüz kaydedilmiş bir senaryon bulunmuyor. Yeni bir senaryo oluşturarak ilana uygun bir başvuru yapabilirsin.'}
               </p>
               <Link
                 className="btn btn-secondary w-fit"
                 href="/dashboard/writer/scripts/new"
+                onClick={handleNewScriptClick}
               >
                 Yeni Senaryo Oluştur
               </Link>
             </div>
-          )}
-          {scripts.length > 0 && matchingScripts.length === 0 && (
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-[#a38d6d]">
-                Bu ilanın türüyle eşleşen bir senaryon bulunmuyor. Aşağıdaki
-                butonla yeni ve uygun türde bir senaryo oluşturabilirsin.
-              </p>
-              <Link
-                className="btn btn-secondary w-fit"
-                href="/dashboard/writer/scripts/new"
-              >
-                Yeni Senaryo Oluştur
-              </Link>
-            </div>
-          )}
-          <button
-            className="btn btn-primary"
-            onClick={handleApply}
-            disabled={
-              !!existingApplication ||
-              !selectedScript ||
-              submitting ||
-              matchingScripts.length === 0
-            }
-          >
-            {submitting ? 'Gönderiliyor...' : 'Senaryomla Başvur'}
-          </button>
-          {existingApplication && (
-            <p className="text-xs text-[#a38d6d]">
-              Bu ilana zaten başvurdun. Durum: {existingApplication.status}
-            </p>
           )}
         </div>
         <div className="pt-6">
