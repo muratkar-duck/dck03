@@ -393,7 +393,7 @@ export default function BrowseScriptsPage() {
                   {pendingInterestId === s.id ? 'Kaydediliyor…' : 'İlgi Göster'}
                 </button>
                 <Link
-                  href={`/dashboard/producer/browse/${s.id}`}
+                  href={`/dashboard/producer/scripts/${s.id}`}
                   className="btn btn-secondary"
                 >
                   Detaylar
