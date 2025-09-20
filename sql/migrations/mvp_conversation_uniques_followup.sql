@@ -1,4 +1,4 @@
--- Ensure conversations are unique per application and participant entries are deduplicated
+-- Ensure deployments prior to the constraint rename also define the new constraint/index names
 ALTER TABLE public.conversations
   ADD CONSTRAINT IF NOT EXISTS conversations_application_id_unique
   UNIQUE (application_id);
