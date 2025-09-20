@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { ensureConversationWithParticipants } from '@/lib/conversations';
@@ -13,37 +13,91 @@ type ApplicationRow = {
   created_at: string;
   listing_id: string;
   listing_title: string;
+  listing_source: string | null;
   script_id: string;
   script_title: string;
-  script_genre: string;
+  writer_email: string | null;
   length: number | null;
   price_cents: number | null;
   conversation_id: string | null;
 };
+
+type IdFilter = 'all' | 'listing' | 'producer_listing' | 'request';
+type Decision = 'accepted' | 'rejected' | 'on_hold' | 'purchased';
+
+const PAGE_SIZE = 10;
 
 export default function ProducerApplicationsPage() {
   const router = useRouter();
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [idFilterType, setIdFilterType] = useState<IdFilter>('all');
+  const [idFilterValue, setIdFilterValue] = useState('');
 
-  useEffect(() => {
-    fetchApplications();
-  }, []);
-
-  const fetchApplications = async () => {
+  const fetchApplications = useCallback(async () => {
+    setLoading(true);
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
+      setApplications([]);
+      setTotalCount(0);
       setLoading(false);
       return;
     }
 
     setCurrentUserId(user.id);
 
-    const { data, error } = await supabase
+    const rangeStart = (currentPage - 1) * PAGE_SIZE;
+    const rangeEnd = rangeStart + PAGE_SIZE - 1;
+
+    const trimmedFilterValue = idFilterValue.trim();
+    const buildFilterAppendix = (
+      column: 'listing_id' | 'producer_listing_id' | 'request_id'
+    ) => {
+      if (trimmedFilterValue.length === 0) {
+        return '';
+      }
+
+      if (idFilterType === 'all') {
+        return `,${column}.eq.${trimmedFilterValue}`;
+      }
+
+      if (idFilterType === 'listing' && column === 'listing_id') {
+        return `,${column}.eq.${trimmedFilterValue}`;
+      }
+
+      if (
+        idFilterType === 'producer_listing' &&
+        column === 'producer_listing_id'
+      ) {
+        return `,${column}.eq.${trimmedFilterValue}`;
+      }
+
+      if (idFilterType === 'request' && column === 'request_id') {
+        return `,${column}.eq.${trimmedFilterValue}`;
+      }
+
+      return '';
+    };
+
+    const ownerConditions = [
+      `and(listing_id.not.is.null,listing.owner_id.eq.${user.id}${buildFilterAppendix(
+        'listing_id'
+      )})`,
+      `and(producer_listing_id.not.is.null,listing.owner_id.eq.${user.id}${buildFilterAppendix(
+        'producer_listing_id'
+      )})`,
+      `and(request_id.not.is.null,listing.owner_id.eq.${user.id}${buildFilterAppendix(
+        'request_id'
+      )})`,
+    ];
+
+    let query = supabase
       .from('applications')
       .select(`
         id,
@@ -58,20 +112,29 @@ export default function ProducerApplicationsPage() {
         script_metadata,
         listing:v_listings_unified!inner(id, title, owner_id, source),
         scripts!inner(id, title, genre, length, price_cents),
+        writer:users!applications_writer_id_fkey(id, email),
         conversations(id)
-      `)
-      .or(
-        [
-          `and(listing_id.not.is.null,listing.owner_id.eq.${user.id})`,
-          `and(producer_listing_id.not.is.null,listing.owner_id.eq.${user.id})`,
-          `and(request_id.not.is.null,listing.owner_id.eq.${user.id})`,
-        ].join(',')
-      )
-      .order('created_at', { ascending: false });
+      `, { count: 'exact' })
+      .or(ownerConditions.join(','))
+      .order('created_at', { ascending: false })
+      .range(rangeStart, rangeEnd);
+
+    if (trimmedFilterValue.length > 0) {
+      if (idFilterType === 'listing') {
+        query = query.eq('listing_id', trimmedFilterValue);
+      } else if (idFilterType === 'producer_listing') {
+        query = query.eq('producer_listing_id', trimmedFilterValue);
+      } else if (idFilterType === 'request') {
+        query = query.eq('request_id', trimmedFilterValue);
+      }
+    }
+
+    const { data, error, count } = await query;
 
     if (error) {
       console.error('Başvurular alınamadı:', error.message);
       setApplications([]);
+      setTotalCount(0);
     } else {
       // Veriyi düzenle
       const formatted = (data || []).map((item: any) => {
@@ -81,6 +144,7 @@ export default function ProducerApplicationsPage() {
         const script = Array.isArray(item.scripts)
           ? item.scripts[0]
           : item.scripts;
+        const writer = Array.isArray(item.writer) ? item.writer[0] : item.writer;
         const conversation = Array.isArray(item.conversations)
           ? item.conversations[0]
           : item.conversations;
@@ -128,12 +192,6 @@ export default function ProducerApplicationsPage() {
             ? String(scriptMetadata.title)
             : '');
 
-        const scriptGenre =
-          (script?.genre != null ? String(script.genre) : null) ??
-          (scriptMetadata?.genre != null
-            ? String(scriptMetadata.genre)
-            : '');
-
         const listingTitle =
           listing?.title != null ? String(listing.title) : '';
 
@@ -148,18 +206,40 @@ export default function ProducerApplicationsPage() {
           created_at: item.created_at,
           listing_id: resolvedListingId,
           listing_title: listingTitle,
+          listing_source:
+            listing?.source != null ? String(listing.source) : null,
           script_id: resolvedScriptId,
           script_title: scriptTitle,
-          script_genre: scriptGenre,
+          writer_email:
+            writer?.email != null ? String(writer.email) : null,
           length: normalizedLength,
           price_cents: normalizedPrice,
           conversation_id: conversation?.id ?? null,
         } as ApplicationRow;
       });
       setApplications(formatted);
+      const resolvedCount = count ?? 0;
+      setTotalCount(resolvedCount);
+
+      if (typeof count === 'number') {
+        const newTotalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+        if (currentPage > newTotalPages) {
+          setCurrentPage(newTotalPages);
+          setLoading(false);
+          return;
+        }
+      }
     }
 
     setLoading(false);
+  }, [currentPage, idFilterType, idFilterValue]);
+
+  useEffect(() => {
+    fetchApplications();
+  }, [fetchApplications]);
+
+  const resetToFirstPage = () => {
+    setCurrentPage(1);
   };
 
   const formatPrice = (priceCents: number | null) => {
@@ -173,10 +253,7 @@ export default function ProducerApplicationsPage() {
     });
   };
 
-  const handleDecision = async (
-    applicationId: string,
-    decision: 'accepted' | 'rejected'
-  ) => {
+  const handleDecision = async (applicationId: string, decision: Decision) => {
     const { error: updateError } = await supabase
       .from('applications')
       .update({ status: decision })
@@ -226,12 +303,17 @@ export default function ProducerApplicationsPage() {
       conversationId = ensuredConversationId;
     }
 
+    const successMessageMap: Record<Decision, string> = {
+      accepted: '✅ Başvuru kabul edildi',
+      rejected: '❌ Başvuru reddedildi',
+      on_hold: '⏳ Başvuru beklemeye alındı',
+      purchased: '🛒 Başvuru satın alma aşamasında işaretlendi',
+    };
+
     if (conversationError) {
-      alert(`⚠️ Başvuru kabul edildi ancak sohbet açılamadı: ${conversationError}`);
+      alert(`⚠️ Başvuru güncellendi ancak sohbet açılamadı: ${conversationError}`);
     } else {
-      alert(
-        `✅ Başvuru ${decision === 'accepted' ? 'kabul edildi' : 'reddedildi'}`
-      );
+      alert(successMessageMap[decision]);
     }
 
     if (decision === 'accepted' && conversationId) {
@@ -247,24 +329,49 @@ export default function ProducerApplicationsPage() {
   };
 
   const getBadge = (status: string) => {
-    if (status === 'accepted')
-      return (
-        <span className="bg-green-200 text-green-800 text-xs px-2 py-1 rounded">
-          Kabul Edildi
-        </span>
-      );
-    if (status === 'rejected')
-      return (
-        <span className="bg-red-200 text-red-800 text-xs px-2 py-1 rounded">
-          Reddedildi
-        </span>
-      );
-    return (
-      <span className="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded">
-        Beklemede
-      </span>
-    );
+    switch (status) {
+      case 'pending':
+        return (
+          <span className="bg-yellow-50 text-yellow-800 text-xs px-2 py-1 rounded">
+            İncelemede
+          </span>
+        );
+      case 'accepted':
+        return (
+          <span className="bg-green-200 text-green-800 text-xs px-2 py-1 rounded">
+            Kabul Edildi
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="bg-red-200 text-red-800 text-xs px-2 py-1 rounded">
+            Reddedildi
+          </span>
+        );
+      case 'on_hold':
+        return (
+          <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded">
+            Beklemeye Alındı
+          </span>
+        );
+      case 'purchased':
+        return (
+          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+            Satın Alma
+          </span>
+        );
+      default:
+        return (
+          <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded">
+            Durum Bilinmiyor
+          </span>
+        );
+    }
   };
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const canGoPrev = currentPage > 1;
+  const canGoNext = currentPage < totalPages;
 
   return (
     <AuthGuard allowedRoles={['producer']}>
@@ -274,85 +381,201 @@ export default function ProducerApplicationsPage() {
           İlanlarınıza gönderilen senaryo başvuruları burada listelenir.
         </p>
 
+        <div className="flex flex-col gap-3 rounded-lg border border-[#e0d2bf] bg-[#fdf8f1] p-4">
+          <h2 className="text-sm font-semibold text-[#5b4632]">
+            Filtreler ve Arama
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <label className="flex flex-col gap-1 text-sm text-[#5b4632]">
+              ID Türü
+              <select
+                value={idFilterType}
+                onChange={(event) => {
+                  setIdFilterType(event.target.value as IdFilter);
+                  resetToFirstPage();
+                }}
+                className="rounded border border-[#d4c2a8] bg-white px-2 py-1 text-sm"
+              >
+                <option value="all">Hepsi</option>
+                <option value="listing">İlan ID</option>
+                <option value="producer_listing">Üretici İlan ID</option>
+                <option value="request">Talep ID</option>
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1 text-sm text-[#5b4632] sm:col-span-2 lg:col-span-3">
+              ID veya anahtar kelime
+              <input
+                type="text"
+                value={idFilterValue}
+                onChange={(event) => {
+                  setIdFilterValue(event.target.value);
+                  resetToFirstPage();
+                }}
+                placeholder="İlan ya da talep ID'si girin"
+                className="rounded border border-[#d4c2a8] px-2 py-1 text-sm"
+              />
+            </label>
+          </div>
+        </div>
+
         {loading ? (
           <p className="text-sm text-[#a38d6d]">Yükleniyor...</p>
         ) : applications.length === 0 ? (
-          <p className="text-sm text-[#a38d6d]">
-            Henüz ilanınıza gelen başvuru yok.
-          </p>
+          <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-[#e0d2bf] bg-white p-10 text-center text-[#7a5c36]">
+            <span className="text-4xl" role="img" aria-hidden>
+              📭
+            </span>
+            <div className="space-y-1">
+              <p className="text-base font-semibold text-[#5b4632]">
+                Henüz başvuru bulunmuyor
+              </p>
+              <p className="text-sm text-[#a38d6d]">
+                İlanlarınız yeni başvurular aldığında burada görebilirsiniz.
+              </p>
+            </div>
+          </div>
         ) : (
-          <div className="space-y-4">
-            {applications.map((app) => (
-              <div key={app.application_id} className="card">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <h2 className="text-lg font-semibold">
-                      🎬 Senaryo:{' '}
-                      <span className="text-[#0e5b4a]">{app.script_title}</span>
-                    </h2>
-                    <p className="text-sm text-[#7a5c36]">
-                      Tür: {app.script_genre} · Süre:{' '}
-                      {app.length ?? '—'}
-                    </p>
-                    <p className="text-sm text-[#7a5c36]">
-                      Fiyat: {formatPrice(app.price_cents)}
-                    </p>
-                    <p className="text-sm text-[#7a5c36]">
-                      İlan: {app.listing_title || '—'}
-                    </p>
-                    <p className="text-xs text-[#a38d6d]">
-                      Başvuru:{' '}
+          <div
+            className="overflow-hidden rounded-lg border border-[#e0d2bf] bg-white"
+            data-test-id="producer-application-list"
+          >
+            <table className="min-w-full divide-y divide-[#f1e6d7]">
+              <thead className="bg-[#f9f3ea] text-left text-xs font-semibold uppercase tracking-wide text-[#5b4632]">
+                <tr>
+                  <th className="px-4 py-3">Senarist</th>
+                  <th className="px-4 py-3">Senaryo</th>
+                  <th className="px-4 py-3">İlan</th>
+                  <th className="px-4 py-3">Durum</th>
+                  <th className="px-4 py-3">Tarih</th>
+                  <th className="px-4 py-3 text-right">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f5ebde] text-sm">
+                {applications.map((app) => (
+                  <tr key={app.application_id} className="hover:bg-[#fdf8f1]">
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-[#0e5b4a]">
+                          {app.writer_email ?? 'Bilinmiyor'}
+                        </span>
+                        <span className="text-xs text-[#a38d6d]">
+                          #{app.application_id.slice(0, 8)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-[#5b4632]">
+                          {app.script_title || '—'}
+                        </span>
+                        <span className="text-xs text-[#7a5c36]">
+                          Süre: {app.length ?? '—'} · Fiyat: {formatPrice(app.price_cents)}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="flex flex-col gap-1">
+                        <span className="font-medium text-[#5b4632]">
+                          {app.listing_title || '—'}
+                        </span>
+                        {app.listing_source ? (
+                          <span className="text-xs uppercase tracking-wide text-[#a38d6d]">
+                            {app.listing_source}
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top">{getBadge(app.status)}</td>
+                    <td className="px-4 py-3 align-top text-xs text-[#7a5c36]">
                       {new Date(app.created_at).toLocaleString('tr-TR')}
-                    </p>
-                  </div>
-                  {getBadge(app.status)}
-                </div>
-
-                {/* ✅ Pending başvurular için karar butonları */}
-                {app.status === 'pending' && (
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      onClick={() =>
-                        handleDecision(app.application_id, 'accepted')
-                      }
-                      className="btn btn-primary"
-                    >
-                      ✅ Kabul Et
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleDecision(app.application_id, 'rejected')
-                      }
-                      className="btn btn-secondary"
-                    >
-                      ❌ Reddet
-                    </button>
-                  </div>
-                )}
-
-                {/* Sabit butonlar */}
-                <div className="mt-3 flex gap-2">
-                  {app.conversation_id ? (
-                    <Link
-                      href={`/dashboard/producer/messages?c=${app.conversation_id}`}
-                      className="btn btn-primary"
-                    >
-                      Sohbeti Aç
-                    </Link>
-                  ) : (
-                    <span className="btn btn-secondary cursor-not-allowed opacity-60">
-                      Sohbet Bekleniyor
-                    </span>
-                  )}
-                  <Link
-                    href={`/dashboard/producer/listings/${app.listing_id}`}
-                    className="btn btn-secondary"
-                  >
-                    İlan Detayı
-                  </Link>
-                </div>
+                    </td>
+                    <td className="px-4 py-3 align-top text-right">
+                      <div className="flex flex-col items-end gap-2">
+                        {app.status === 'pending' && (
+                          <div className="flex flex-wrap justify-end gap-2">
+                            <button
+                              onClick={() =>
+                                handleDecision(app.application_id, 'accepted')
+                              }
+                              className="btn btn-primary"
+                            >
+                              ✅ Kabul Et
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDecision(app.application_id, 'on_hold')
+                              }
+                              className="btn btn-secondary"
+                            >
+                              ⏳ Beklet
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDecision(app.application_id, 'purchased')
+                              }
+                              className="btn btn-secondary"
+                            >
+                              🛒 Satın Al
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleDecision(app.application_id, 'rejected')
+                              }
+                              className="btn btn-secondary"
+                            >
+                              ❌ Reddet
+                            </button>
+                          </div>
+                        )}
+                        <div className="flex flex-wrap justify-end gap-2">
+                          {app.conversation_id ? (
+                            <Link
+                              href={`/dashboard/producer/messages?c=${app.conversation_id}`}
+                              className="btn btn-primary"
+                            >
+                              Sohbeti Aç
+                            </Link>
+                          ) : (
+                            <span className="btn btn-secondary cursor-not-allowed opacity-60">
+                              Sohbet Bekleniyor
+                            </span>
+                          )}
+                          <Link
+                            href={`/dashboard/producer/listings/${app.listing_id}`}
+                            className="btn btn-secondary"
+                          >
+                            İlan Detayı
+                          </Link>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="flex items-center justify-between border-t border-[#f1e6d7] bg-[#fdf8f1] px-4 py-3 text-sm text-[#5b4632]">
+              <span>
+                Toplam {totalCount.toLocaleString('tr-TR')} başvurudan sayfa {currentPage} /{' '}
+                {totalPages.toLocaleString('tr-TR')}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => canGoPrev && setCurrentPage((page) => page - 1)}
+                  disabled={!canGoPrev}
+                  className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  ← Önceki
+                </button>
+                <button
+                  onClick={() => canGoNext && setCurrentPage((page) => page + 1)}
+                  disabled={!canGoNext}
+                  className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Sonraki →
+                </button>
               </div>
-            ))}
+            </div>
           </div>
         )}
       </div>
