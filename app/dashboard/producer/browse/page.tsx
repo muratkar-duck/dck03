@@ -12,6 +12,7 @@ type Script = {
   synopsis: string | null;
   created_at: string;
   price_cents: number | null;
+  owner_id: string | null;
 };
 
 export default function BrowseScriptsPage() {
@@ -26,13 +27,67 @@ export default function BrowseScriptsPage() {
   const [selectedPrice, setSelectedPrice] = useState<string>('Tüm Fiyatlar');
   const [selectedSort, setSelectedSort] = useState<string>('En Yeni');
 
+  const [toast, setToast] = useState<
+    { type: 'success' | 'error'; message: string } | null
+  >(null);
+  const [pendingInterestId, setPendingInterestId] = useState<string | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (!toast) return undefined;
+
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const showToast = useCallback(
+    (type: 'success' | 'error', message: string) => {
+      setToast({ type, message });
+    },
+    []
+  );
+
+  const notifyWriterOfInterest = useCallback(
+    async (params: { writerId: string; script: Script; producerId: string }) => {
+      const { writerId, script, producerId } = params;
+
+      try {
+        const { error } = await supabase.rpc('enqueue_notification', {
+          recipient_id: writerId,
+          template: 'producer_interest_registered',
+          payload: {
+            script_id: script.id,
+            script_title: script.title,
+            producer_id: producerId,
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        return true;
+      } catch (error) {
+        console.error('İlgi bildirimi kuyruğa eklenemedi:', error);
+        return false;
+      }
+    },
+    []
+  );
+
   const fetchScripts = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
     try {
       const { data, error } = await supabase
         .from('scripts')
-        .select('id, title, genre, length, synopsis, created_at, price_cents')
+        .select(
+          'id, title, genre, length, synopsis, created_at, price_cents, owner_id'
+        )
         .order('created_at', { ascending: false });
         
       if (error) throw error;
@@ -130,8 +185,98 @@ export default function BrowseScriptsPage() {
     return text.length > max ? text.slice(0, max).trim() + '…' : text;
   };
 
+  const handleInterest = useCallback(
+    async (script: Script) => {
+      setPendingInterestId(script.id);
+      try {
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
+
+        if (authError) {
+          throw authError;
+        }
+
+        if (!user) {
+          showToast('error', 'Lütfen giriş yapın.');
+          return;
+        }
+
+        if (!script.owner_id) {
+          showToast('error', 'Senaryo sahibine ulaşılamadı.');
+          return;
+        }
+
+        const { error: upsertError } = await supabase
+          .from('interests')
+          .upsert(
+            { producer_id: user.id, script_id: script.id },
+            { onConflict: 'producer_id,script_id' }
+          );
+
+        if (upsertError) {
+          throw upsertError;
+        }
+
+        const notified = await notifyWriterOfInterest({
+          writerId: script.owner_id,
+          script,
+          producerId: user.id,
+        });
+
+        if (notified) {
+          showToast(
+            'success',
+            `${script.title} senaryosuna ilgi gösterdiniz. Senarist bilgilendirildi.`
+          );
+        } else {
+          showToast(
+            'success',
+            `${script.title} senaryosuna ilgi gösterdiniz. Senaristi bilgilendirme denemesi başarısız oldu, lütfen daha sonra kontrol edin.`
+          );
+        }
+      } catch (err: any) {
+        console.error('İlgi kaydedilemedi:', err);
+        showToast(
+          'error',
+          err?.message || 'İlgi kaydedilirken beklenmeyen bir hata oluştu.'
+        );
+      } finally {
+        setPendingInterestId(null);
+      }
+    },
+    [notifyWriterOfInterest, showToast]
+  );
+
   return (
     <div className="space-y-6">
+      {toast && (
+        <div
+          className={`fixed right-6 bottom-6 z-50 max-w-xs rounded-lg border px-4 py-3 text-sm shadow-lg transition-opacity ${
+            toast.type === 'success'
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : 'bg-red-50 border-red-200 text-red-700'
+          }`}
+          role="status"
+          aria-live={toast.type === 'success' ? 'polite' : 'assertive'}
+        >
+          <div className="flex items-start gap-3">
+            <span aria-hidden className="text-lg">
+              {toast.type === 'success' ? '✅' : '⚠️'}
+            </span>
+            <p className="flex-1 leading-5">{toast.message}</p>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="text-xs font-semibold uppercase tracking-wide"
+              aria-label="Bildirimi kapat"
+            >
+              Kapat
+            </button>
+          </div>
+        </div>
+      )}
       <div className="flex items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">🔍 Senaryo Ara</h1>
@@ -235,25 +380,17 @@ export default function BrowseScriptsPage() {
                 {formatPrice(s.price_cents)}
               </p>
               <p className="text-sm text-[#4a3d2f]">{excerpt(s.synopsis)}</p>
-              <div className="flex gap-2 mt-2">
-                {/* Not: “İlgilen” aksiyonu için henüz net bir endpoint/tablo verilmedi.
-                    Şimdilik klikte kullanıcıya basit bir bildirim veriyoruz.
-                    Endpoint hazır olduğunda buraya insert/RPC çağrısı eklenir. */}
+              <div
+                className="flex gap-2 mt-2"
+                data-test-id={`script-${s.id}-interest-actions`}
+              >
                 <button
                   className="btn btn-primary"
-                  onClick={async () => {
-                    const { data: { user } } = await supabase.auth.getUser();
-                    if (!user) {
-                      alert('Lütfen giriş yapın.');
-                      return;
-                    }
-                    
-                    // Basit bir favorites tablosu olduğunu varsayalım
-                    // Şimdilik sadece bilgi verici mesaj
-                    alert(`${s.title} senaryosuna ilgi gösterdiniz. Senarist bilgilendirilecek.`);
-                  }}
+                  onClick={() => handleInterest(s)}
+                  disabled={pendingInterestId === s.id}
+                  aria-busy={pendingInterestId === s.id}
                 >
-                  İlgi Göster
+                  {pendingInterestId === s.id ? 'Kaydediliyor…' : 'İlgi Göster'}
                 </button>
                 <Link
                   href={`/dashboard/producer/browse/${s.id}`}
