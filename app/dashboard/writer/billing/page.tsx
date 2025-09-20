@@ -44,7 +44,7 @@ function BillingContent() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-test-id="WRITER_BILLING">
       <h1 className="text-2xl font-bold">💳 Üyelik ve Fatura Bilgileri</h1>
       <p className="text-[#7a5c36]">
         Aktif planını ve ödeme geçmişini buradan takip edebilirsin.

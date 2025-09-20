@@ -249,7 +249,10 @@ export default function WriterDashboardPage() {
 
   return (
     <AuthGuard allowedRoles={['writer']}>
-      <div className="space-y-8">
+      <div
+        className="space-y-8"
+        data-test-id="WRITER_DASH_FIX_V2"
+      >
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-2xl font-bold">Merhaba, Senarist!</h1>
