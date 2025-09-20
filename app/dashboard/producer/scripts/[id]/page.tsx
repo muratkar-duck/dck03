@@ -100,7 +100,7 @@ export default function ProducerScriptDetailPage() {
   if (loading) {
     return (
       <AuthGuard allowedRoles={['producer']}>
-        <p>Yükleniyor...</p>
+        <div data-test-id="producer-script-detail-loading">Yükleniyor...</div>
       </AuthGuard>
     );
   }
@@ -108,7 +108,7 @@ export default function ProducerScriptDetailPage() {
   if (!script) {
     return (
       <AuthGuard allowedRoles={['producer']}>
-        <div className="space-y-3">
+        <div className="space-y-3" data-test-id="producer-script-detail-error">
           {errorMsg && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded p-3">
               {errorMsg}
@@ -125,7 +125,7 @@ export default function ProducerScriptDetailPage() {
 
   return (
     <AuthGuard allowedRoles={['producer']}>
-      <div className="space-y-6">
+      <div className="space-y-6" data-test-id="producer-script-detail-page">
         <div className="flex items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold">{script.title}</h1>
@@ -184,15 +184,16 @@ export default function ProducerScriptDetailPage() {
               <p className="text-sm text-gray-600">
                 Burada PDF/dosya görüntüleme veya indirme butonu yer alacak.
               </p>
-              {/* 
+              {/*
                 İLERİDE:
                 - Supabase Storage'a 'scripts' bucketı aç.
                 - Dosya yolu olarak ör. scripts/{script.id}.pdf yükle.
-                - Burada signed URL üret: 
+                - Burada signed URL üret:
                     const { data } = await supabase
                       .storage.from('scripts')
                       .createSignedUrl(`$${script.id}.pdf`, 60);
                 - Sonra bir <a href={data?.signedUrl} className="btn btn-primary">PDF'yi İndir</a> göster.
+                TODO: Satın alma akışı tamamlandığında PDF indirme butonunu etkinleştir.
               */}
               <button className="btn btn-primary mt-2" disabled>
                 PDF’yi İndir (yakında)
