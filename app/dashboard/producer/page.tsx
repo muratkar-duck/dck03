@@ -270,7 +270,7 @@ export default function ProducerDashboardPage() {
 
   return (
     <AuthGuard allowedRoles={['producer']}>
-      <div className="space-y-6">
+      <div className="space-y-6" data-test-id="PRODUCER_DASHBOARD">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold">Hoş geldiniz, Yapımcı!</h1>
