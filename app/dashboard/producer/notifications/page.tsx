@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
 type Row = {
@@ -19,12 +19,9 @@ type Row = {
 export default function ProducerNotificationsPage() {
   const [items, setItems] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const supabase = useMemo(getSupabaseClient, []);
 
-  useEffect(() => {
-    load();
-  }, []);
-
-  const load = async () => {
+  const load = useCallback(async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -140,7 +137,11 @@ export default function ProducerNotificationsPage() {
       setItems(withConversations);
     }
     setLoading(false);
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const getBadge = (status: string) => {
     if (status === 'accepted')

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 type OrderRow = {
   id: string;
@@ -35,12 +35,9 @@ const formatDateTime = (isoString: string) => {
 export default function ProducerPurchasesPage() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const supabase = useMemo(getSupabaseClient, []);
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -86,7 +83,11 @@ export default function ProducerPurchasesPage() {
 
     setOrders(formatted);
     setLoading(false);
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    void fetchOrders();
+  }, [fetchOrders]);
 
   return (
     <AuthGuard allowedRoles={['producer']}>

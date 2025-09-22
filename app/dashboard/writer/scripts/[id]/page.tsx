@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 type Script = {
   id: string;
@@ -22,6 +22,7 @@ export default function ScriptDetailPage() {
 
   const [script, setScript] = useState<Script | null>(null);
   const [loading, setLoading] = useState(true);
+  const supabase = useMemo(getSupabaseClient, []);
   useEffect(() => {
     const load = async () => {
       if (!id || typeof id !== 'string') {
@@ -45,7 +46,7 @@ export default function ScriptDetailPage() {
     };
 
     load();
-  }, [id]);
+  }, [id, supabase]);
 
   if (loading) return <p className="text-sm text-gray-500">Yükleniyor...</p>;
   if (!script)

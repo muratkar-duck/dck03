@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
 type Script = {
@@ -19,6 +19,7 @@ export default function BrowseScriptsPage() {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const supabase = useMemo(getSupabaseClient, []);
 
   // Basit istemci tarafı filtre/sort state (şimdilik demo; sunucuya gönderilmiyor)
   const [search, setSearch] = useState('');
@@ -76,7 +77,7 @@ export default function BrowseScriptsPage() {
         return false;
       }
     },
-    []
+    [supabase]
   );
 
   const fetchScripts = useCallback(async () => {
@@ -99,7 +100,7 @@ export default function BrowseScriptsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     let mounted = true;
@@ -246,7 +247,7 @@ export default function BrowseScriptsPage() {
         setPendingInterestId(null);
       }
     },
-    [notifyWriterOfInterest, showToast]
+    [notifyWriterOfInterest, showToast, supabase]
   );
 
   return (

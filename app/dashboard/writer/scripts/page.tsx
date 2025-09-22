@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 type Script = {
   id: string;
@@ -33,6 +33,7 @@ export default function MyScriptsPage() {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const supabase = useMemo(getSupabaseClient, []);
 
   const fetchScripts = useCallback(async (ownerId: string, showLoading = false) => {
     if (showLoading) {
@@ -59,7 +60,7 @@ export default function MyScriptsPage() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -111,7 +112,7 @@ export default function MyScriptsPage() {
         supabase.removeChannel(channel);
       }
     };
-  }, [router, fetchScripts]);
+  }, [router, fetchScripts, supabase]);
 
   const handleDelete = async (id: string) => {
     const confirmed = confirm(

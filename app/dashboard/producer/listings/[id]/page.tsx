@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { ensureConversationWithParticipants } from '@/lib/conversations';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import type { Listing } from '@/types/db';
 
 type ApplicationRow = {
@@ -55,6 +55,7 @@ export default function ProducerListingDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
     if (!listingId) return;
@@ -188,7 +189,7 @@ export default function ProducerListingDetailPage() {
     return () => {
       isMounted = false;
     };
-  }, [listingId]);
+  }, [listingId, supabase]);
 
   const handleDecision = async (
     applicationId: string,

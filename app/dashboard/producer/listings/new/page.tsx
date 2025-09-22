@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export default function NewProducerListingPage() {
   const router = useRouter();
@@ -13,6 +13,7 @@ export default function NewProducerListingPage() {
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -29,7 +30,7 @@ export default function NewProducerListingPage() {
     };
 
     fetchUser();
-  }, [router]);
+  }, [router, supabase]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

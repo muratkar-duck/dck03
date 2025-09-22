@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import AuthGuard from '@/components/AuthGuard';
 
 type Script = {
@@ -27,6 +27,7 @@ export default function ProducerScriptDetailPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [script, setScript] = useState<Script | null>(null);
+  const supabase = useMemo(getSupabaseClient, []);
 
   const fmtDate = (iso: string) =>
     new Intl.DateTimeFormat('tr-TR', {
@@ -91,7 +92,7 @@ export default function ProducerScriptDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     if (id) fetchAll(id);

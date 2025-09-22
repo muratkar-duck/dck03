@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { useEffect, useMemo, useState } from 'react';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export default function DashboardIndexRedirect() {
   const [msg, setMsg] = useState('Yükleniyor…');
   const [showChoice, setShowChoice] = useState(false);
+  const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
     const run = async () => {
@@ -48,7 +49,7 @@ export default function DashboardIndexRedirect() {
       }
     };
     run();
-  }, []);
+  }, [supabase]);
 
   return (
     <main className="max-w-xl mx-auto p-6 text-center">

@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { ensureConversationWithParticipants } from '@/lib/conversations';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 type ApplicationRow = {
   application_id: string;
@@ -36,6 +36,7 @@ export default function ProducerApplicationsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [idFilterType, setIdFilterType] = useState<IdFilter>('all');
   const [idFilterValue, setIdFilterValue] = useState('');
+  const supabase = useMemo(getSupabaseClient, []);
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
@@ -232,7 +233,7 @@ export default function ProducerApplicationsPage() {
     }
 
     setLoading(false);
-  }, [currentPage, idFilterType, idFilterValue]);
+  }, [currentPage, idFilterType, idFilterValue, supabase]);
 
   useEffect(() => {
     fetchApplications();

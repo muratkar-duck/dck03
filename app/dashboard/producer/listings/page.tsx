@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import type { Listing } from '@/types/db';
 
 const currencyFormatter = new Intl.NumberFormat('tr-TR', {
@@ -28,6 +28,7 @@ export default function ProducerListingsPage() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -69,7 +70,7 @@ export default function ProducerListingsPage() {
     };
 
     fetchListings();
-  }, [router]);
+  }, [router, supabase]);
 
   return (
     <AuthGuard allowedRoles={['producer']}>

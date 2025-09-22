@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
 import { usePlanData } from '@/hooks/usePlanData';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 type OrderRow = {
   amount_cents: number | null;
@@ -89,6 +89,7 @@ export default function WriterDashboardPage() {
     loading: planLoading,
     plans: availablePlans,
   } = usePlanData();
+  const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -228,7 +229,7 @@ export default function WriterDashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [supabase]);
 
   const scriptCount = scriptStats.length;
 
