@@ -280,7 +280,7 @@ export default function ProducerDashboardPage() {
   const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
 
   return (
-    <AuthGuard allowedRoles={['producer']}>
+    <AuthGuard>
       <div className="space-y-6" data-test-id="PRODUCER_DASHBOARD">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>

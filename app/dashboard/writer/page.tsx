@@ -258,7 +258,7 @@ export default function WriterDashboardPage() {
   );
 
   return (
-    <AuthGuard allowedRoles={['writer']}>
+    <AuthGuard>
       <div className="space-y-8" data-test-id="WRITER_DASH_FIX_V2">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
