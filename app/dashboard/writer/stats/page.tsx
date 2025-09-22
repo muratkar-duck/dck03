@@ -39,7 +39,23 @@ export default function WriterStatsPage() {
       };
     }
 
+    if (!supabase) {
+      setStats(null);
+      setStatsLoading(false);
+      setError('Supabase istemcisi kullanılamıyor.');
+      return () => {
+        active = false;
+      };
+    }
+
     const fetchStats = async () => {
+      if (!supabase) {
+        setStats(null);
+        setStatsLoading(false);
+        setError('Supabase istemcisi kullanılamıyor.');
+        return;
+      }
+
       setStatsLoading(true);
       setError(null);
 

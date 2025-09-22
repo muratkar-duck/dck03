@@ -9,6 +9,12 @@ export default function DashboardIndexRedirect() {
   const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
+    if (!supabase) {
+      setShowChoice(true);
+      setMsg('Supabase istemcisi kullanılamıyor.');
+      return;
+    }
+
     const run = async () => {
       try {
         const { data: ures, error: uerr } = await supabase.auth.getUser();

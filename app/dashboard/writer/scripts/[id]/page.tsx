@@ -29,6 +29,11 @@ export default function ScriptDetailPage() {
         setLoading(false);
         return;
       }
+
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
       const { data, error } = await supabase
         .from('scripts')
         .select(

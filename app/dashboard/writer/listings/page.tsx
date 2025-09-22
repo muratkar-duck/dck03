@@ -29,6 +29,13 @@ export default function BrowseListingsPage() {
 
   useEffect(() => {
     const fetchListings = async () => {
+      if (!supabase) {
+        setLoading(false);
+        setError('Supabase istemcisi kullanılamıyor.');
+        setListings([]);
+        return;
+      }
+
       setLoading(true);
       setError(null);
       const { data, error } = await supabase

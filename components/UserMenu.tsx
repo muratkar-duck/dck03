@@ -20,6 +20,10 @@ export default function UserMenu() {
   const [chatCount, setChatCount] = useState<number>(0); // Sohbet (accepted başvuru) sayacı
 
   useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
     const getUser = async () => {
       const { data } = await supabase.auth.getUser();
       setUser(data?.user || null);
@@ -46,6 +50,10 @@ export default function UserMenu() {
 
   // Sayaçları role’e göre yükle
   useEffect(() => {
+    if (!supabase) {
+      return;
+    }
+
     const loadCounts = async () => {
       if (!user) return;
 
@@ -161,6 +169,10 @@ export default function UserMenu() {
   }, [supabase, user]);
 
   const handleSignOut = async () => {
+    if (!supabase) {
+      return;
+    }
+
     await supabase.auth.signOut();
     setUser(null);
     router.push('/');
@@ -242,6 +254,12 @@ export default function UserMenu() {
 
   const handleRoleChange = async (nextRole: Role) => {
     if (!user || role === nextRole) {
+      setRoleMenuOpen(false);
+      return;
+    }
+
+    if (!supabase) {
+      console.error('Supabase istemcisi bulunamadı.');
       setRoleMenuOpen(false);
       return;
     }

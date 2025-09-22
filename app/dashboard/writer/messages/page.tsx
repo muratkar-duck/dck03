@@ -52,6 +52,10 @@ export default function WriterMessagesPage() {
       applicationId: string,
       fallbackUserId: string | null
     ) => {
+      if (!supabase) {
+        return;
+      }
+
       const { data: application, error: applicationError } = await supabase
         .from('applications')
         .select('id, writer_id, producer_id')
@@ -105,6 +109,14 @@ export default function WriterMessagesPage() {
     let isActive = true;
 
     const loadConversations = async () => {
+      if (!supabase) {
+        setConversations([]);
+        setConversationsLoading(false);
+        setSelectedConversationId(null);
+        setUserId(null);
+        return;
+      }
+
       setConversationsLoading(true);
 
       const {
@@ -276,6 +288,13 @@ export default function WriterMessagesPage() {
     let isActive = true;
 
     const fetchMessages = async (showSpinner = false) => {
+      if (!supabase) {
+        if (showSpinner) {
+          setMessagesLoading(false);
+        }
+        return;
+      }
+
       if (showSpinner) {
         setMessagesLoading(true);
       }
@@ -301,6 +320,12 @@ export default function WriterMessagesPage() {
     };
 
     fetchMessages(true);
+
+    if (!supabase) {
+      return () => {
+        isActive = false;
+      };
+    }
 
     const channel = supabase
       .channel(`writer-conversation-${selectedConversationId}`)
@@ -331,7 +356,7 @@ export default function WriterMessagesPage() {
     return () => {
       isActive = false;
       clearInterval(pollId);
-      supabase.removeChannel(channel);
+      supabase?.removeChannel(channel);
     };
   }, [selectedConversationId, supabase]);
 
@@ -367,6 +392,11 @@ export default function WriterMessagesPage() {
     const text = input.trim();
     if (!text) return;
     if (!userId) return;
+
+    if (!supabase) {
+      console.error('Supabase istemcisi mevcut değil. Mesaj gönderilemedi.');
+      return;
+    }
 
     const { error } = await supabase.from('messages').insert({
       conversation_id: selectedConversationId,

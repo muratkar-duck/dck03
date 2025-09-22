@@ -56,6 +56,10 @@ export default function BrowseScriptsPage() {
     async (params: { writerId: string; script: Script; producerId: string }) => {
       const { writerId, script, producerId } = params;
 
+      if (!supabase) {
+        return false;
+      }
+
       try {
         const { error } = await supabase.rpc('enqueue_notification', {
           recipient_id: writerId,
@@ -83,6 +87,14 @@ export default function BrowseScriptsPage() {
   const fetchScripts = useCallback(async () => {
     setLoading(true);
     setErrorMsg(null);
+
+    if (!supabase) {
+      setScripts([]);
+      setErrorMsg('Supabase istemcisi kullanılamıyor.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('scripts')
@@ -190,6 +202,10 @@ export default function BrowseScriptsPage() {
     async (script: Script) => {
       setPendingInterestId(script.id);
       try {
+        if (!supabase) {
+          throw new Error('Supabase istemcisi kullanılamıyor.');
+        }
+
         const {
           data: { user },
           error: authError,

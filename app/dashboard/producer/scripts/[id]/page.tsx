@@ -50,6 +50,11 @@ export default function ProducerScriptDetailPage() {
       setLoading(true);
       setErrorMsg(null);
 
+      if (!supabase) {
+        setErrorMsg('Supabase istemcisi kullanılamıyor.');
+        return;
+      }
+
       // 1) Giriş yapan yapımcıyı al
       const {
         data: { user },

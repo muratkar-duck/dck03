@@ -99,6 +99,15 @@ export default function WriterDashboardPage() {
       setLoadingApplications(true);
       setErrorMessage(null);
 
+      if (!supabase) {
+        setScriptStats([]);
+        setApplications([]);
+        setLoadingScripts(false);
+        setLoadingApplications(false);
+        setErrorMessage('Supabase istemcisi kullanılamıyor.');
+        return;
+      }
+
       try {
         const {
           data: { user },

@@ -17,6 +17,11 @@ export default function NewProducerListingPage() {
 
   useEffect(() => {
     const fetchUser = async () => {
+      if (!supabase) {
+        setOwnerId(null);
+        return;
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -36,6 +41,11 @@ export default function NewProducerListingPage() {
     event.preventDefault();
 
     if (!ownerId) return;
+
+    if (!supabase) {
+      alert('Supabase istemcisi kullanılamıyor.');
+      return;
+    }
 
     setSubmitting(true);
 

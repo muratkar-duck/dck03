@@ -17,6 +17,12 @@ export default function SignUpWriterPage() {
     setLoading(true);
     setErrorMsg('');
 
+    if (!supabase) {
+      setErrorMsg('Supabase istemcisi kullanılamıyor.');
+      setLoading(false);
+      return;
+    }
+
     // 1. Supabase Auth kaydı
     const { data, error } = await supabase.auth.signUp({
       email,

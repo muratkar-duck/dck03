@@ -35,6 +35,13 @@ export default function ProducerListingsPage() {
       setLoading(true);
       setError(null);
 
+      if (!supabase) {
+        setListings([]);
+        setError('Supabase istemcisi kullanılamıyor.');
+        setLoading(false);
+        return;
+      }
+
       const {
         data: { user },
         error: authError,

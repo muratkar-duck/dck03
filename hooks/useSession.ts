@@ -9,6 +9,12 @@ export function useSession() {
   const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
+    if (!supabase) {
+      setSession(null);
+      setLoading(false);
+      return;
+    }
+
     const getSession = async () => {
       const {
         data: { session },

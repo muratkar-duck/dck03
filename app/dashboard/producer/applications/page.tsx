@@ -40,6 +40,14 @@ export default function ProducerApplicationsPage() {
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
+
+    if (!supabase) {
+      setApplications([]);
+      setTotalCount(0);
+      setLoading(false);
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -255,6 +263,11 @@ export default function ProducerApplicationsPage() {
   };
 
   const handleDecision = async (applicationId: string, decision: Decision) => {
+    if (!supabase) {
+      alert('Supabase istemcisi kullanılamıyor.');
+      return;
+    }
+
     const { error: updateError } = await supabase
       .from('applications')
       .update({ status: decision })
