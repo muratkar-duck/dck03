@@ -1,0 +1,75 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`PrivacyPage matches the snapshot 1`] = `
+<div
+  class="space-y-8"
+>
+  <h1
+    class="text-3xl font-bold"
+  >
+    Gizlilik Politikası
+  </h1>
+  <div
+    class="card space-y-4"
+  >
+    <div
+      class="leading-relaxed"
+    >
+      <p>
+        Bu sayfa, ducktylo platformunda kişisel verilerin nasıl işlendiğine dair örnek niteliğinde bilgiler içerir. Buradaki
+metin, gerçek hukuki metin yerine geçmez ve sadece yer tutucu olarak hazırlanmıştır.
+      </p>
+    </div>
+    <div
+      class="leading-relaxed"
+    >
+      <p>
+        Kullanıcılarımızın gizliliğini önemseriz. Gerçek politika metninde hangi verilerin toplandığı, hangi amaçlarla
+kullanıldığı ve ne kadar süreyle saklandığı gibi detaylara yer verilmelidir.
+      </p>
+    </div>
+    <div
+      class="leading-relaxed"
+    >
+      <p>
+        Ayrıca, kullanıcıların verileri üzerinde sahip oldukları haklar ile bu hakları nasıl kullanabileceklerine dair
+açıklamalar da politika metnine dahil edilmelidir.
+      </p>
+    </div>
+  </div>
+  <div
+    class="space-y-3"
+  >
+    <h2
+      class="text-2xl font-semibold"
+    >
+      Veri Güvenliği
+    </h2>
+    <div
+      class="leading-relaxed"
+    >
+      <p>
+        Gerçek bir gizlilik politikası, veri güvenliği önlemlerini ve olası güvenlik ihlallerinde izlenecek prosedürleri açıkça
+belirtmelidir. Bu alanda yer alan bilgiler, kullanıcı güvenini artırmaya yardımcı olur.
+      </p>
+    </div>
+  </div>
+  <div
+    class="space-y-3"
+  >
+    <h2
+      class="text-2xl font-semibold"
+    >
+      İletişim
+    </h2>
+    <div
+      class="leading-relaxed"
+    >
+      <p>
+        Gizlilikle ilgili sorularınız için kullanılacak iletişim kanallarını bu alanda belirtebilirsiniz. Örneğin, destek e-posta
+adresi veya iletişim formu bağlantısı eklenebilir.
+      </p>
+    </div>
+  </div>
+</div>
+`;

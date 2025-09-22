@@ -1,0 +1,75 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`TermsPage matches the snapshot 1`] = `
+<div
+  class="space-y-8"
+>
+  <h1
+    class="text-3xl font-bold"
+  >
+    Kullanım Şartları
+  </h1>
+  <div
+    class="card space-y-4"
+  >
+    <div
+      class="leading-relaxed"
+    >
+      <p>
+        Bu metin, ducktylo platformu için hazırlanacak gerçek kullanım şartları belgesine örnek olarak sunulmuştur. Buradaki
+açıklamalar yalnızca yer tutucu niteliğindedir ve hukuki bağlayıcılık taşımaz.
+      </p>
+    </div>
+    <div
+      class="leading-relaxed"
+    >
+      <p>
+        Gerçek şartlarda; hizmetlerin kapsamı, tarafların yükümlülükleri ve platform kullanımına ilişkin kısıtlamalar ayrıntılı
+şekilde belirtilmelidir.
+      </p>
+    </div>
+    <div
+      class="leading-relaxed"
+    >
+      <p>
+        Ayrıca, hesapların kapatılması, içerik paylaşım kuralları ve uyuşmazlık çözüm yöntemleri gibi başlıklar da kullanım
+şartlarının bir parçası olmalıdır.
+      </p>
+    </div>
+  </div>
+  <div
+    class="space-y-3"
+  >
+    <h2
+      class="text-2xl font-semibold"
+    >
+      Sorumluluk Reddi
+    </h2>
+    <div
+      class="leading-relaxed"
+    >
+      <p>
+        Nihai belgede, platformun sorumluluk sınırları ve kullanıcıların kabul ettiği riskler net olarak açıklanmalıdır. Bu bölüm,
+kullanıcıların platformu hangi koşullarda kullanabileceğini tanımlar.
+      </p>
+    </div>
+  </div>
+  <div
+    class="space-y-3"
+  >
+    <h2
+      class="text-2xl font-semibold"
+    >
+      Değişiklikler
+    </h2>
+    <div
+      class="leading-relaxed"
+    >
+      <p>
+        Kullanım şartlarında yapılacak güncellemelerin nasıl duyurulacağı ve bu değişikliklerin ne zaman yürürlüğe gireceği
+belirtilmelidir. Kullanıcıların değişikliklerden haberdar olmasını sağlamak önemlidir.
+      </p>
+    </div>
+  </div>
+</div>
+`;
