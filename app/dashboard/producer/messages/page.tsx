@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { getSupabaseClient } from '@/lib/supabaseClient';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 const POLL_INTERVAL = 3000;
 
@@ -117,6 +118,14 @@ export default function ProducerMessagesPage() {
 
   const fetchConversations = useCallback(async () => {
     setLoadingConversations(true);
+
+    if (!supabase) {
+      setConversations([]);
+      setCurrentUserId(null);
+      setLoadingConversations(false);
+      return;
+    }
+
     try {
       const {
         data: { user },
@@ -194,6 +203,10 @@ export default function ProducerMessagesPage() {
       applicationId: string,
       fallbackUserId: string | null
     ) => {
+      if (!supabase) {
+        return;
+      }
+
       try {
         const { data: application, error: applicationError } = await supabase
           .from('applications')
@@ -251,6 +264,10 @@ export default function ProducerMessagesPage() {
 
   const ensureConversationForApplication = useCallback(
     async (applicationId: string) => {
+      if (!supabase) {
+        return;
+      }
+
       try {
         const { data, error } = await supabase
           .from('conversations')
@@ -372,7 +389,7 @@ export default function ProducerMessagesPage() {
 
   useEffect(() => {
     let active = true;
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let channel: ReturnType<SupabaseClient['channel']> | null = null;
     let poll: ReturnType<typeof setInterval> | null = null;
 
     if (!selectedConversationId) {
@@ -385,6 +402,13 @@ export default function ProducerMessagesPage() {
     setLoadingMessages(true);
 
     const loadMessages = async (showSpinner: boolean) => {
+      if (!supabase) {
+        if (showSpinner && active) {
+          setLoadingMessages(false);
+        }
+        return;
+      }
+
       try {
         const { data, error } = await supabase
           .from('messages')
@@ -413,7 +437,8 @@ export default function ProducerMessagesPage() {
       void loadMessages(false);
     }, POLL_INTERVAL);
 
-    channel = supabase
+    if (supabase) {
+      channel = supabase
       .channel(`messages-conv-${selectedConversationId}`)
       .on(
         'postgres_changes',
@@ -434,11 +459,12 @@ export default function ProducerMessagesPage() {
         }
       )
       .subscribe();
+    }
 
     return () => {
       active = false;
       if (poll) clearInterval(poll);
-      if (channel) supabase.removeChannel(channel);
+      if (channel && supabase) supabase.removeChannel(channel);
     };
   }, [selectedConversationId, supabase]);
 
@@ -453,6 +479,10 @@ export default function ProducerMessagesPage() {
 
     setSending(true);
     try {
+      if (!supabase) {
+        throw new Error('Supabase istemcisi kullanılamıyor.');
+      }
+
       let senderId = currentUserId;
       if (!senderId) {
         const {

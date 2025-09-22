@@ -12,7 +12,9 @@ export default function SignOutPage() {
         document.cookie = 'dt_role=; Path=/; Max-Age=0; SameSite=Lax';
         document.cookie = 'dt_role=; Path=/dashboard; Max-Age=0; SameSite=Lax';
         // supabase oturumunu kapat
-        await supabase.auth.signOut();
+        if (supabase) {
+          await supabase.auth.signOut();
+        }
       } finally {
         window.location.href = '/';
       }

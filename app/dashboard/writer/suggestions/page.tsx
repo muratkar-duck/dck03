@@ -26,6 +26,12 @@ export default function WriterSuggestionHistoryPage() {
   const supabase = useMemo(getSupabaseClient, []);
 
   const fetchApplications = useCallback(async () => {
+    if (!supabase) {
+      setApplications([]);
+      setLoading(false);
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();

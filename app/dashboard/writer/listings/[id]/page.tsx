@@ -77,6 +77,11 @@ export default function ListingDetailPage() {
         return;
       }
 
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('v_listings_unified')
         .select(
@@ -96,6 +101,10 @@ export default function ListingDetailPage() {
   const fetchWriterResources = useCallback(
     async (options?: { reason?: 'initial' | 'visibility' }) => {
       if (!id) return;
+
+      if (!supabase) {
+        return;
+      }
 
       const {
         data: { user },
@@ -265,6 +274,11 @@ export default function ListingDetailPage() {
 
     if (!listing) {
       alert('İlan bilgisi alınamadı.');
+      return;
+    }
+
+    if (!supabase) {
+      alert('Supabase istemcisi kullanılamıyor.');
       return;
     }
 

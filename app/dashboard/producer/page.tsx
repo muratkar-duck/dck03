@@ -80,6 +80,16 @@ export default function ProducerDashboardPage() {
         return;
       }
 
+      if (!supabase) {
+        if (!isCancelled) {
+          setOrders([]);
+          setListingsSummary([]);
+          setError('Supabase istemcisi kullanılamıyor.');
+          setLoadingData(false);
+        }
+        return;
+      }
+
       try {
         const [ordersResponse, listingsResponse, applicationsResponse] =
           await Promise.all([

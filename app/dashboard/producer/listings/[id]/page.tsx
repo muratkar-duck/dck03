@@ -67,6 +67,12 @@ export default function ProducerListingDetailPage() {
       setError(null);
       setApplications([]);
 
+      if (!supabase) {
+        setError('Supabase istemcisi kullanılamıyor.');
+        setLoading(false);
+        return;
+      }
+
       try {
         const {
           data: { user },
@@ -196,6 +202,12 @@ export default function ProducerListingDetailPage() {
     decision: 'accepted' | 'rejected'
   ) => {
     setUpdatingId(applicationId);
+
+    if (!supabase) {
+      alert('Supabase istemcisi kullanılamıyor.');
+      setUpdatingId(null);
+      return;
+    }
 
     const { error: updateError } = await supabase
       .from('applications')

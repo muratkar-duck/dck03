@@ -18,6 +18,11 @@ export default function NewScriptPage() {
 
   useEffect(() => {
     const getUser = async () => {
+      if (!supabase) {
+        setUserId(null);
+        return;
+      }
+
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -35,6 +40,11 @@ export default function NewScriptPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId) return;
+
+    if (!supabase) {
+      alert('Supabase istemcisi kullanılamıyor.');
+      return;
+    }
 
     const { error } = await supabase.from('scripts').insert([
       {

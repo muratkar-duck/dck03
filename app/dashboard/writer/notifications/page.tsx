@@ -22,6 +22,12 @@ export default function WriterNotificationsPage() {
   const supabase = useMemo(getSupabaseClient, []);
 
   const load = useCallback(async () => {
+    if (!supabase) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();

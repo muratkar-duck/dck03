@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 
@@ -35,37 +36,53 @@ export default function MyScriptsPage() {
   const router = useRouter();
   const supabase = useMemo(getSupabaseClient, []);
 
-  const fetchScripts = useCallback(async (ownerId: string, showLoading = false) => {
-    if (showLoading) {
-      setLoading(true);
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('scripts')
-        .select(
-          'id,title,genre,length,synopsis,description,price_cents,created_at'
-        )
-        .eq('owner_id', ownerId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Veri alınamadı:', error.message);
-        setScripts([]);
-      } else {
-        setScripts(data ?? []);
-      }
-    } finally {
+  const fetchScripts = useCallback(
+    async (ownerId: string, showLoading = false) => {
       if (showLoading) {
-        setLoading(false);
+        setLoading(true);
       }
-    }
-  }, [supabase]);
+
+      if (!supabase) {
+        setScripts([]);
+        if (showLoading) {
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('scripts')
+          .select(
+            'id,title,genre,length,synopsis,description,price_cents,created_at'
+          )
+          .eq('owner_id', ownerId)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Veri alınamadı:', error.message);
+          setScripts([]);
+        } else {
+          setScripts(data ?? []);
+        }
+      } finally {
+        if (showLoading) {
+          setLoading(false);
+        }
+      }
+    },
+    [supabase],
+  );
 
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let channel: ReturnType<SupabaseClient['channel']> | null = null;
 
     const initialize = async () => {
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
+
       const {
         data: { user },
         error: userErr,
@@ -109,7 +126,7 @@ export default function MyScriptsPage() {
 
     return () => {
       if (channel) {
-        supabase.removeChannel(channel);
+        supabase?.removeChannel(channel);
       }
     };
   }, [router, fetchScripts, supabase]);
@@ -119,6 +136,11 @@ export default function MyScriptsPage() {
       'Bu senaryoyu silmek istediğinizden emin misiniz?'
     );
     if (!confirmed) return;
+
+    if (!supabase) {
+      alert('Supabase istemcisi kullanılamıyor.');
+      return;
+    }
 
     // Tekrar güvenlik için oturumdaki kullanıcıyı al
     const {

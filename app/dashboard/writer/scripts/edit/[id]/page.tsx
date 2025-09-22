@@ -22,6 +22,13 @@ export default function EditScriptPage() {
     if (!id) return;
 
     setErrorMessage(null);
+
+    if (!supabase) {
+      setErrorMessage('Supabase istemcisi kullanılamıyor.');
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('scripts')
       .select(
@@ -52,6 +59,11 @@ export default function EditScriptPage() {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!supabase) {
+      alert('Supabase istemcisi kullanılamıyor.');
+      return;
+    }
 
     const { error } = await supabase
       .from('scripts')

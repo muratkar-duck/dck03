@@ -23,6 +23,12 @@ export default function SignUpProducerPage() {
     setLoading(true);
     setError(null);
 
+    if (!supabase) {
+      setError('Supabase istemcisi kullanılamıyor.');
+      setLoading(false);
+      return;
+    }
+
     // Supabase auth'a kullanıcıyı ekle
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: form.email,

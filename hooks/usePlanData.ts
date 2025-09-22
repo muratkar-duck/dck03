@@ -61,6 +61,13 @@ export function usePlanData(): UsePlanDataResult {
       return;
     }
 
+    if (!supabase) {
+      console.warn('Supabase client is not available. Falling back to defaults.');
+      applyFallbackSelection();
+      setPlanLoading(false);
+      return;
+    }
+
     setPlanLoading(true);
     try {
       const { data, error } = await supabase
@@ -124,6 +131,11 @@ export function usePlanData(): UsePlanDataResult {
 
   const updatePlan = useCallback(
     async (target: PlanUpdateInput) => {
+      if (!supabase) {
+        console.warn('Supabase client is not available.');
+        return;
+      }
+
       if (!userId) {
         throw new Error('Kullanıcı oturumu bulunamadı.');
       }

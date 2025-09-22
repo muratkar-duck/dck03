@@ -38,6 +38,12 @@ export default function ProducerPurchasesPage() {
   const supabase = useMemo(getSupabaseClient, []);
 
   const fetchOrders = useCallback(async () => {
+    if (!supabase) {
+      setOrders([]);
+      setLoading(false);
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();

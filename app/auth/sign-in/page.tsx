@@ -18,6 +18,12 @@ export default function SignInPage() {
     setLoading(true);
     setErrorMsg('');
 
+    if (!supabase) {
+      setErrorMsg('Supabase istemcisi kullanılamıyor.');
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -51,6 +57,17 @@ export default function SignInPage() {
 
     setLoading(false);
   };
+
+  if (!supabase) {
+    return (
+      <div className="max-w-md mx-auto py-12 space-y-6">
+        <h1 className="text-2xl font-bold text-center">🔐 Giriş Yap</h1>
+        <p className="text-red-600 text-sm text-center">
+          Supabase istemcisi oluşturulamadı. Lütfen daha sonra tekrar deneyin.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-md mx-auto py-12 space-y-6">

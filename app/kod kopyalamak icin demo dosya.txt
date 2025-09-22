@@ -26,6 +26,12 @@ export default function ProducerApplicationsPage() {
   }, []);
 
   const fetchApplications = async () => {
+    if (!supabase) {
+      setApplications([]);
+      setLoading(false);
+      return;
+    }
+
     const {
       data: { user },
     } = await supabase.auth.getUser();

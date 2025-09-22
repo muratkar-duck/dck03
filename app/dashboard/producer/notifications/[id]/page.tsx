@@ -27,6 +27,11 @@ export default function ProducerNotificationDetailPage() {
         setLoading(false);
         return;
       }
+
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
       const { data, error } = await supabase
         .from('applications')
         .select(
