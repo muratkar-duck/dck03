@@ -14,15 +14,18 @@ const publicLinks = [
   { href: '/plans', label: 'Plans' },
 ];
 
-const appLinks = [
+const authenticatedLinks = [
   { href: '/browse', label: 'Browse' },
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/messages', label: 'Messages' },
 ];
+
+const messagesLink = { href: '/messages', label: 'Messages' };
 
 export default function AppHeader() {
   const { session } = useSession();
-  const navigation = session ? appLinks : publicLinks;
+  const navigation = session
+    ? [...authenticatedLinks, messagesLink]
+    : publicLinks;
 
   return (
     <header
