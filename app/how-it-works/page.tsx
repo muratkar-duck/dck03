@@ -1,9 +1,12 @@
+import { BRAND_DISPLAY_NAME } from '@/lib/brand';
+
 export default function HowItWorksPage() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">Nasıl Çalışır?</h1>
       <p>
-        PlotMatch&apos;te senarist veya yapımcı olarak kayıt olabilirsiniz. Her
+        {BRAND_DISPLAY_NAME}&apos;ta senarist veya yapımcı olarak kayıt
+        olabilirsiniz. Her
         kullanıcı tipi için özel bir panel sunuyoruz.
       </p>
       <ul className="list-disc pl-6">
