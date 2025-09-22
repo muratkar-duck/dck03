@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
+import { handleInterest as handleInterestAction } from './handle-interest';
 
 type Script = {
   id: string;
@@ -202,63 +203,13 @@ export default function BrowseScriptsPage() {
     async (script: Script) => {
       setPendingInterestId(script.id);
       try {
-        if (!supabase) {
-          throw new Error('Supabase istemcisi kullanılamıyor.');
-        }
-
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser();
-
-        if (authError) {
-          throw authError;
-        }
-
-        if (!user) {
-          showToast('error', 'Lütfen giriş yapın.');
-          return;
-        }
-
-        if (!script.owner_id) {
-          showToast('error', 'Senaryo sahibine ulaşılamadı.');
-          return;
-        }
-
-        const { error: upsertError } = await supabase
-          .from('interests')
-          .upsert(
-            { producer_id: user.id, script_id: script.id },
-            { onConflict: 'producer_id,script_id' }
-          );
-
-        if (upsertError) {
-          throw upsertError;
-        }
-
-        const notified = await notifyWriterOfInterest({
-          writerId: script.owner_id,
-          script,
-          producerId: user.id,
+        await handleInterestAction(script, {
+          supabase,
+          notifyWriterOfInterest,
+          showToast,
         });
-
-        if (notified) {
-          showToast(
-            'success',
-            `${script.title} senaryosuna ilgi gösterdiniz. Senarist bilgilendirildi.`
-          );
-        } else {
-          showToast(
-            'success',
-            `${script.title} senaryosuna ilgi gösterdiniz. Senaristi bilgilendirme denemesi başarısız oldu, lütfen daha sonra kontrol edin.`
-          );
-        }
-      } catch (err: any) {
+      } catch (err) {
         console.error('İlgi kaydedilemedi:', err);
-        showToast(
-          'error',
-          err?.message || 'İlgi kaydedilirken beklenmeyen bir hata oluştu.'
-        );
       } finally {
         setPendingInterestId(null);
       }
