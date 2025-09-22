@@ -1,0 +1,5 @@
+node_modules
+tools/**
+scripts/**
+**/*.test.*
+**/__tests__/**
