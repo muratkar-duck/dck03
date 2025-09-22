@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { useEffect, useMemo } from 'react';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export default function SignOutPage() {
+  const supabase = useMemo(getSupabaseClient, []);
   useEffect(() => {
     const run = async () => {
       try {
@@ -17,7 +18,7 @@ export default function SignOutPage() {
       }
     };
     run();
-  }, []);
+  }, [supabase]);
 
   return (
     <main className="max-w-md mx-auto p-6 text-center">

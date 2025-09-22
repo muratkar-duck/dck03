@@ -10,7 +10,7 @@ import {
   type PlanId,
   type PlanSelection,
 } from '@/lib/plans';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import { useSession } from '@/hooks/useSession';
 
 type PlanUpdateInput = PlanId | 'upgrade' | 'downgrade';
@@ -35,6 +35,7 @@ export function usePlanData(): UsePlanDataResult {
 
   const role = session?.user?.user_metadata?.role as string | undefined;
   const userId = session?.user?.id as string | undefined;
+  const supabase = useMemo(getSupabaseClient, []);
 
   const order: PlanId[] = useMemo(() => ['free', 'student', 'pro', 'top'], []);
 
@@ -83,7 +84,7 @@ export function usePlanData(): UsePlanDataResult {
     } finally {
       setPlanLoading(false);
     }
-  }, [applyFallbackSelection, userId]);
+  }, [applyFallbackSelection, supabase, userId]);
 
   useEffect(() => {
     if (loading) return;
@@ -154,7 +155,7 @@ export function usePlanData(): UsePlanDataResult {
         setIsSaving(false);
       }
     },
-    [resolveTargetPlan, selection?.planId, userId],
+    [resolveTargetPlan, selection?.planId, supabase, userId],
   );
 
   const upgradePlan = useCallback(() => updatePlan('upgrade'), [updatePlan]);

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import type { Listing } from '@/types/db';
 
 const currency = new Intl.NumberFormat('tr-TR', {
@@ -25,6 +25,7 @@ export default function BrowseListingsPage() {
 
   const [search, setSearch] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('Tüm Türler');
+  const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
     const fetchListings = async () => {
@@ -43,7 +44,7 @@ export default function BrowseListingsPage() {
       setLoading(false);
     };
     fetchListings();
-  }, []);
+  }, [supabase]);
 
   const filtered = useMemo(() => {
     let arr = [...listings];

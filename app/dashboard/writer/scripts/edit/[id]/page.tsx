@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export default function EditScriptPage() {
   const { id } = useParams();
@@ -16,6 +16,7 @@ export default function EditScriptPage() {
   const [priceCents, setPriceCents] = useState<number | ''>('');
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const supabase = useMemo(getSupabaseClient, []);
 
   const fetchScript = useCallback(async () => {
     if (!id) return;
@@ -43,7 +44,7 @@ export default function EditScriptPage() {
       setPriceCents(data.price_cents ?? '');
     }
     setLoading(false);
-  }, [id]);
+  }, [id, supabase]);
 
   useEffect(() => {
     fetchScript();

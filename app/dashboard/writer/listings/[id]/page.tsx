@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import type { Listing } from '@/types/db';
 
 type WriterScriptOption = {
@@ -44,6 +44,7 @@ export default function ListingDetailPage() {
   const previousScriptIdsRef = useRef<Set<string>>(new Set());
   const previousMatchingCountRef = useRef(0);
   const listingRef = useRef<Listing | null>(null);
+  const supabase = useMemo(getSupabaseClient, []);
 
   const normalizeGenre = (genre: string | null | undefined) =>
     genre?.trim().toLowerCase() ?? '';
@@ -90,7 +91,7 @@ export default function ListingDetailPage() {
       setLoading(false);
     };
     fetchListing();
-  }, [id]);
+  }, [id, supabase]);
 
   const fetchWriterResources = useCallback(
     async (options?: { reason?: 'initial' | 'visibility' }) => {
@@ -175,7 +176,7 @@ export default function ListingDetailPage() {
         setExistingApplication(null);
       }
     },
-    [id]
+    [id, supabase]
   );
 
   useEffect(() => {

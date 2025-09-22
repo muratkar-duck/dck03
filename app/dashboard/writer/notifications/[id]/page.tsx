@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
 import { useParams } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
 type Row = {
@@ -20,6 +20,7 @@ export default function WriterNotificationDetailPage() {
   const [row, setRow] = useState<Row | null>(null);
   const [loading, setLoading] = useState(true);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const supabase = useMemo(getSupabaseClient, []);
   useEffect(() => {
     const load = async () => {
       if (!id) {
@@ -116,7 +117,7 @@ export default function WriterNotificationDetailPage() {
     };
 
     load();
-  }, [id]);
+  }, [id, supabase]);
 
   const getBadge = (status: string) => {
     if (status === 'accepted')

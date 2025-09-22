@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import AuthGuard from '@/components/AuthGuard';
 import { useSession } from '@/hooks/useSession';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 const formatCurrency = (cents: number | null) => {
   if (cents == null) {
@@ -56,6 +56,7 @@ export default function ProducerDashboardPage() {
   const [listingsSummary, setListingsSummary] = useState<ListingSummary[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
     if (sessionLoading) {
@@ -238,7 +239,7 @@ export default function ProducerDashboardPage() {
     return () => {
       isCancelled = true;
     };
-  }, [session, sessionLoading]);
+  }, [session, sessionLoading, supabase]);
 
   const isLoading = sessionLoading || loadingData;
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 const POLL_INTERVAL = 3000;
 
@@ -68,6 +68,7 @@ export default function ProducerMessagesPage() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const supabase = useMemo(getSupabaseClient, []);
 
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
   const [selectedConversationId, setSelectedConversationId] =
@@ -181,7 +182,7 @@ export default function ProducerMessagesPage() {
     } finally {
       setLoadingConversations(false);
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     fetchConversations();
@@ -245,7 +246,7 @@ export default function ProducerMessagesPage() {
         console.error('Konuşma katılımcıları oluşturma hatası:', error);
       }
     },
-    []
+    [supabase]
   );
 
   const ensureConversationForApplication = useCallback(
@@ -285,6 +286,7 @@ export default function ProducerMessagesPage() {
       ensureParticipantsForConversation,
       fetchConversations,
       setUrlConversation,
+      supabase,
     ]
   );
 
@@ -438,7 +440,7 @@ export default function ProducerMessagesPage() {
       if (poll) clearInterval(poll);
       if (channel) supabase.removeChannel(channel);
     };
-  }, [selectedConversationId]);
+  }, [selectedConversationId, supabase]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -479,7 +481,7 @@ export default function ProducerMessagesPage() {
     } finally {
       setSending(false);
     }
-  }, [currentUserId, input, selectedConversationId, sending]);
+  }, [currentUserId, input, selectedConversationId, sending, supabase]);
 
   const selectedConversation = useMemo(
     () =>

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 export default function NewScriptPage() {
   const router = useRouter();
@@ -14,6 +14,7 @@ export default function NewScriptPage() {
   const [description, setDescription] = useState('');
   const [priceCents, setPriceCents] = useState<number | ''>('');
   const [userId, setUserId] = useState<string | null>(null);
+  const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
     const getUser = async () => {
@@ -29,7 +30,7 @@ export default function NewScriptPage() {
     };
 
     getUser();
-  }, [router]);
+  }, [router, supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

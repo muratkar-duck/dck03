@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
 import type { Role } from '@/types/db';
 
 export default function UserMenu() {
   const router = useRouter();
+  const supabase = useMemo(getSupabaseClient, []);
   const [user, setUser] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
@@ -35,7 +36,7 @@ export default function UserMenu() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -157,7 +158,7 @@ export default function UserMenu() {
     };
 
     loadCounts();
-  }, [user]);
+  }, [supabase, user]);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();

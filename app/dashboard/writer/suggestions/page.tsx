@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
 type Application = {
@@ -23,12 +23,9 @@ type Application = {
 export default function WriterSuggestionHistoryPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
+  const supabase = useMemo(getSupabaseClient, []);
 
-  useEffect(() => {
-    fetchApplications();
-  }, []);
-
-  const fetchApplications = async () => {
+  const fetchApplications = useCallback(async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -127,7 +124,11 @@ export default function WriterSuggestionHistoryPage() {
     }
 
     setLoading(false);
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchApplications();
+  }, [fetchApplications]);
 
   const getBadge = (status: string) => {
     if (status === 'accepted')

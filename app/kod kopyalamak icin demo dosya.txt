@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 type ApplicationRow = {
   application_id: string;
@@ -19,6 +19,7 @@ type ApplicationRow = {
 export default function ProducerApplicationsPage() {
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
     fetchApplications();

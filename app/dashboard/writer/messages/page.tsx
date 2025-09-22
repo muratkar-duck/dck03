@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 
 type ConversationSummary = {
   id: string;
@@ -44,6 +44,7 @@ export default function WriterMessagesPage() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const supabase = useMemo(getSupabaseClient, []);
 
   const ensureParticipantsForConversation = useCallback(
     async (
@@ -98,7 +99,7 @@ export default function WriterMessagesPage() {
           participantError.message
         );
       }
-    }, []);
+    }, [supabase]);
 
   useEffect(() => {
     let isActive = true;
@@ -262,6 +263,7 @@ export default function WriterMessagesPage() {
     conversationParam,
     ensureParticipantsForConversation,
     router,
+    supabase,
   ]);
 
   useEffect(() => {
@@ -331,7 +333,7 @@ export default function WriterMessagesPage() {
       clearInterval(pollId);
       supabase.removeChannel(channel);
     };
-  }, [selectedConversationId]);
+  }, [selectedConversationId, supabase]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });

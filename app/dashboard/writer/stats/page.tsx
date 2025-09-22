@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
-import { supabase } from '@/lib/supabaseClient';
+import { getSupabaseClient } from '@/lib/supabaseClient';
 import { useSession } from '@/hooks/useSession';
 
 type WriterStats = {
@@ -18,6 +18,7 @@ export default function WriterStatsPage() {
   const [stats, setStats] = useState<WriterStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
     let active = true;
@@ -130,7 +131,7 @@ export default function WriterStatsPage() {
     return () => {
       active = false;
     };
-  }, [session?.user?.id, sessionLoading]);
+  }, [session?.user?.id, sessionLoading, supabase]);
 
   const lastUpdatedDisplay = useMemo(() => {
     if (!stats?.lastFetchedAtIso) {
