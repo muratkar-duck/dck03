@@ -1,4 +1,5 @@
-import Link from 'next/link';
+import { DashboardShell, type DashboardNavItem } from '@/components/dashboard/dashboard-shell';
+import type { ReactNode } from 'react';
 
 export const metadata = {
   title: 'ducktylo | Panel',
@@ -8,40 +9,16 @@ export const metadata = {
 export default function WriterDashboardLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
-  return (
-    <section className="min-h-screen flex bg-[#faf3e0]">
-      <aside className="w-64 bg-[#0e5b4a] text-white p-6 space-y-6">
-        <h2 className="text-2xl font-bold lowercase tracking-wide">ducktylo</h2>
-        <nav className="space-y-4 text-sm">
-          <Link href="/dashboard/writer" className="block hover:underline">
-            📂 Panel
-          </Link>
-          <Link
-            href="/dashboard/writer/scripts/new"
-            className="block hover:underline"
-          >
-            ➕ Yeni Senaryo Ekle
-          </Link>
-          <Link href="/dashboard/writer/scripts" className="block hover:underline">
-            ✍️ Senaryolarım
-          </Link>
-          <Link
-            href="/dashboard/writer/listings"
-            className="block hover:underline"
-          >
-            🎬 İlanlarım (Listings)
-          </Link>
-          <Link href="/dashboard/writer/stats" className="block hover:underline">
-            📊 İstatistikler
-          </Link>
-          <Link href="/dashboard/writer/billing" className="block hover:underline">
-            💳 Üyelik / Fatura
-          </Link>
-        </nav>
-      </aside>
-      <main className="flex-1 p-8">{children}</main>
-    </section>
-  );
+  const navItems: DashboardNavItem[] = [
+    { href: '/dashboard/writer', label: 'Panel', icon: '📂' },
+    { href: '/dashboard/writer/scripts/new', label: 'Yeni Senaryo', icon: '➕' },
+    { href: '/dashboard/writer/scripts', label: 'Senaryolarım', icon: '✍️' },
+    { href: '/dashboard/writer/listings', label: 'İlanlarım', icon: '🎬' },
+    { href: '/dashboard/writer/stats', label: 'İstatistikler', icon: '📊' },
+    { href: '/dashboard/writer/billing', label: 'Üyelik / Fatura', icon: '💳' },
+  ];
+
+  return <DashboardShell navItems={navItems}>{children}</DashboardShell>;
 }
