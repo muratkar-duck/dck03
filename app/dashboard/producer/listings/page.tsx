@@ -16,6 +16,11 @@ const dateFormatter = new Intl.DateTimeFormat('tr-TR', {
   dateStyle: 'medium',
 });
 
+const dateTimeFormatter = new Intl.DateTimeFormat('tr-TR', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+});
+
 const budgetLabel = (budgetCents: number | null | undefined) => {
   if (typeof budgetCents === 'number') {
     return currencyFormatter.format(budgetCents / 100);
@@ -62,7 +67,7 @@ export default function ProducerListingsPage() {
       const { data, error: listingsError } = await supabase
         .from('v_listings_unified')
         .select(
-          'id, owner_id, title, genre, description, budget_cents, created_at, source'
+          'id, owner_id, title, genre, description, budget_cents, created_at, deadline, source'
         )
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
@@ -134,6 +139,12 @@ export default function ProducerListingsPage() {
                     <span>Tür: {listing.genre}</span>
                     <span>
                       Oluşturuldu: {dateFormatter.format(new Date(listing.created_at))}
+                    </span>
+                    <span>
+                      Son teslim:{' '}
+                      {listing.deadline
+                        ? dateTimeFormatter.format(new Date(listing.deadline))
+                        : 'Belirtilmemiş'}
                     </span>
                     {listing.source === 'requests' ? (
                       <span className="text-xs uppercase tracking-wide text-[#a38d6d]">
