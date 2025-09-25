@@ -22,6 +22,32 @@ type ApplicationRow = {
   conversation_id: string | null;
 };
 
+type MaybeArray<T> = T | T[] | null | undefined;
+
+type ScriptMetadata = {
+  id?: unknown;
+  title?: unknown;
+  length?: unknown;
+  price_cents?: unknown;
+  writer_email?: unknown;
+} | null;
+
+type SupabaseApplicationRow = {
+  id: string;
+  status: string;
+  created_at: string;
+  listing_id: string | null;
+  producer_listing_id: string | null;
+  request_id: string | null;
+  owner_id: string | null;
+  producer_id: string | null;
+  script_id: string | null;
+  script_metadata: ScriptMetadata;
+  writer: MaybeArray<{ id: string; email: string | null }>;
+  listing: MaybeArray<{ id: string; title: string | null; source: string | null }>;
+  conversations: MaybeArray<{ id: string }>;
+};
+
 type IdFilter = 'all' | 'listing' | 'producer_listing' | 'request';
 type Decision = 'accepted' | 'rejected' | 'on_hold' | 'purchased';
 
@@ -65,46 +91,6 @@ export default function ProducerApplicationsPage() {
     const rangeEnd = rangeStart + PAGE_SIZE - 1;
 
     const trimmedFilterValue = idFilterValue.trim();
-    const buildFilterAppendix = (
-      column: 'listing_id' | 'producer_listing_id' | 'request_id'
-    ) => {
-      if (trimmedFilterValue.length === 0) {
-        return '';
-      }
-
-      if (idFilterType === 'all') {
-        return `,${column}.eq.${trimmedFilterValue}`;
-      }
-
-      if (idFilterType === 'listing' && column === 'listing_id') {
-        return `,${column}.eq.${trimmedFilterValue}`;
-      }
-
-      if (
-        idFilterType === 'producer_listing' &&
-        column === 'producer_listing_id'
-      ) {
-        return `,${column}.eq.${trimmedFilterValue}`;
-      }
-
-      if (idFilterType === 'request' && column === 'request_id') {
-        return `,${column}.eq.${trimmedFilterValue}`;
-      }
-
-      return '';
-    };
-
-    const ownerConditions = [
-      `and(listing_id.not.is.null,listing.owner_id.eq.${user.id}${buildFilterAppendix(
-        'listing_id'
-      )})`,
-      `and(producer_listing_id.not.is.null,listing.owner_id.eq.${user.id}${buildFilterAppendix(
-        'producer_listing_id'
-      )})`,
-      `and(request_id.not.is.null,listing.owner_id.eq.${user.id}${buildFilterAppendix(
-        'request_id'
-      )})`,
-    ];
 
     let query = supabase
       .from('applications')
@@ -120,16 +106,19 @@ export default function ProducerApplicationsPage() {
         script_id,
         script_metadata,
         listing:v_listings_unified!inner(id, title, owner_id, source),
-        scripts!inner(id, title, genre, length, price_cents),
         writer:users!applications_writer_id_fkey(id, email),
         conversations(id)
       `, { count: 'exact' })
-      .or(ownerConditions.join(','))
+      .or(`owner_id.eq.${user.id},producer_id.eq.${user.id}`)
       .order('created_at', { ascending: false })
       .range(rangeStart, rangeEnd);
 
     if (trimmedFilterValue.length > 0) {
-      if (idFilterType === 'listing') {
+      if (idFilterType === 'all') {
+        query = query.or(
+          `listing_id.eq.${trimmedFilterValue},producer_listing_id.eq.${trimmedFilterValue},request_id.eq.${trimmedFilterValue}`
+        );
+      } else if (idFilterType === 'listing') {
         query = query.eq('listing_id', trimmedFilterValue);
       } else if (idFilterType === 'producer_listing') {
         query = query.eq('producer_listing_id', trimmedFilterValue);
@@ -138,33 +127,36 @@ export default function ProducerApplicationsPage() {
       }
     }
 
-    const { data, error, count } = await query;
+    const { data, error, count } = (await query) as {
+      data: SupabaseApplicationRow[] | null;
+      error: { message: string } | null;
+      count: number | null;
+    };
 
     if (error) {
       console.error('Başvurular alınamadı:', error.message);
       setApplications([]);
       setTotalCount(0);
     } else {
-      // Veriyi düzenle
-      const formatted = (data || []).map((item: any) => {
-        const listing = Array.isArray(item.listing)
-          ? item.listing[0]
-          : item.listing;
-        const script = Array.isArray(item.scripts)
-          ? item.scripts[0]
-          : item.scripts;
-        const writer = Array.isArray(item.writer) ? item.writer[0] : item.writer;
-        const conversation = Array.isArray(item.conversations)
-          ? item.conversations[0]
-          : item.conversations;
+      const takeFirst = <T,>(value: MaybeArray<T>): T | null => {
+        if (Array.isArray(value)) {
+          return value[0] ?? null;
+        }
+
+        return value ?? null;
+      };
+
+      const formatted = (data ?? []).map((item) => {
+        const listing = takeFirst(item.listing);
+        const writer = takeFirst(item.writer);
+        const conversation = takeFirst(item.conversations);
 
         const scriptMetadata =
           item.script_metadata && typeof item.script_metadata === 'object'
-            ? (item.script_metadata as Record<string, any>)
+            ? (item.script_metadata as ScriptMetadata)
             : null;
 
-        const rawLength =
-          script?.length ?? scriptMetadata?.length ?? null;
+        const rawLength = scriptMetadata?.length ?? null;
         const normalizedLength =
           typeof rawLength === 'number'
             ? rawLength
@@ -172,8 +164,7 @@ export default function ProducerApplicationsPage() {
             ? Number(rawLength)
             : null;
 
-        const rawPrice =
-          script?.price_cents ?? scriptMetadata?.price_cents ?? null;
+        const rawPrice = scriptMetadata?.price_cents ?? null;
         const normalizedPrice =
           typeof rawPrice === 'number'
             ? rawPrice
@@ -190,16 +181,14 @@ export default function ProducerApplicationsPage() {
         const resolvedListingId =
           rawListingId != null ? String(rawListingId) : '';
 
-        const rawScriptId =
-          item.script_id ?? script?.id ?? scriptMetadata?.id ?? null;
+        const rawScriptId = item.script_id ?? scriptMetadata?.id ?? null;
         const resolvedScriptId =
           rawScriptId != null ? String(rawScriptId) : '';
 
         const scriptTitle =
-          (script?.title != null ? String(script.title) : null) ??
-          (scriptMetadata?.title != null
+          scriptMetadata?.title != null
             ? String(scriptMetadata.title)
-            : '');
+            : '';
 
         const listingTitle =
           listing?.title != null ? String(listing.title) : '';
@@ -208,6 +197,13 @@ export default function ProducerApplicationsPage() {
           item.id != null ? String(item.id) : '';
 
         const status = item.status != null ? String(item.status) : '';
+
+        const writerEmail =
+          writer?.email != null
+            ? String(writer.email)
+            : scriptMetadata?.writer_email != null
+            ? String(scriptMetadata.writer_email)
+            : null;
 
         return {
           application_id: applicationId,
@@ -219,8 +215,7 @@ export default function ProducerApplicationsPage() {
             listing?.source != null ? String(listing.source) : null,
           script_id: resolvedScriptId,
           script_title: scriptTitle,
-          writer_email:
-            writer?.email != null ? String(writer.email) : null,
+          writer_email: writerEmail,
           length: normalizedLength,
           price_cents: normalizedPrice,
           conversation_id: conversation?.id ?? null,
