@@ -12,6 +12,7 @@ export default function NewProducerListingPage() {
   const [genre, setGenre] = useState('');
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('');
+  const [deadline, setDeadline] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const supabase = useMemo(getSupabaseClient, []);
 
@@ -59,6 +60,28 @@ export default function NewProducerListingPage() {
 
     const budgetCents = Math.round(numericBudget * 100);
 
+    let deadlineValue: string | null = null;
+
+    if (deadline) {
+      const parsedDeadline = new Date(deadline);
+
+      if (Number.isNaN(parsedDeadline.getTime())) {
+        alert('Lütfen geçerli bir son teslim tarihi girin.');
+        setSubmitting(false);
+        return;
+      }
+
+      const now = new Date();
+
+      if (parsedDeadline.getTime() < now.getTime()) {
+        alert('Son teslim tarihi geçmiş olamaz.');
+        setSubmitting(false);
+        return;
+      }
+
+      deadlineValue = parsedDeadline.toISOString();
+    }
+
     const { error } = await supabase.from('producer_listings').insert([
       {
         owner_id: ownerId,
@@ -67,6 +90,7 @@ export default function NewProducerListingPage() {
         genre,
         budget_cents: budgetCents,
         created_at: new Date().toISOString(),
+        deadline: deadlineValue,
       },
     ]);
 
@@ -90,22 +114,28 @@ export default function NewProducerListingPage() {
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-sm font-medium mb-1">Başlık</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="producer-listing-title">
+              Başlık
+            </label>
             <input
               type="text"
               className="w-full p-2 border rounded-lg"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
+              id="producer-listing-title"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Tür</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="producer-listing-genre">
+              Tür
+            </label>
             <select
               className="w-full p-2 border rounded-lg"
               value={genre}
               onChange={(event) => setGenre(event.target.value)}
+              id="producer-listing-genre"
               required
             >
               <option value="">Tür seçin</option>
@@ -118,7 +148,29 @@ export default function NewProducerListingPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Bütçe (₺)</label>
+            <label
+              className="block text-sm font-medium mb-1"
+              htmlFor="producer-listing-deadline"
+            >
+              Son Teslim Tarihi
+            </label>
+            <input
+              type="datetime-local"
+              className="w-full p-2 border rounded-lg"
+              value={deadline}
+              onChange={(event) => setDeadline(event.target.value)}
+              id="producer-listing-deadline"
+            />
+            <p className="text-xs text-[#a38d6d] mt-1">
+              Geçmiş tarih seçemezsiniz. Bu alanı boş bırakırsanız son teslim
+              tarihi belirlenmez.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1" htmlFor="producer-listing-budget">
+              Bütçe (₺)
+            </label>
             <input
               type="number"
               min="0"
@@ -126,6 +178,7 @@ export default function NewProducerListingPage() {
               className="w-full p-2 border rounded-lg"
               value={budget}
               onChange={(event) => setBudget(event.target.value)}
+              id="producer-listing-budget"
               required
             />
             <p className="text-xs text-[#a38d6d] mt-1">
@@ -134,12 +187,15 @@ export default function NewProducerListingPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Açıklama</label>
+            <label className="block text-sm font-medium mb-1" htmlFor="producer-listing-description">
+              Açıklama
+            </label>
             <textarea
               className="w-full p-2 border rounded-lg"
               rows={4}
               value={description}
               onChange={(event) => setDescription(event.target.value)}
+              id="producer-listing-description"
               required
             />
           </div>
