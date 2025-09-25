@@ -61,12 +61,23 @@ export default function UserMenu() {
 
       try {
         if (role === 'producer') {
-          // Bildirim: Bu yapımcının ilanlarına gelen PENDING başvuru sayısı
-          {
-            const { count } = await supabase
-              .from('applications')
-              .select(
-                `
+          const { count: notificationCount } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('event_type', 'application_submitted')
+            .is('read_at', null);
+
+          setNotifCount(notificationCount ?? 0);
+
+          const { count } = await supabase
+            .from('conversations')
+            .select(
+              `
+                id,
+                application_id,
+                created_at,
+                application:applications!inner (
                   id,
                   listing_id,
                   writer_id,
@@ -79,83 +90,48 @@ export default function UserMenu() {
                     title,
                     source
                   )
-                `,
-                {
-                  count: 'exact',
-                  head: true,
-                }
-              )
-              .eq('owner_id', user.id)
-              .eq('status', 'pending');
-            setNotifCount(count ?? 0);
-          }
+                )
+              `,
+              { count: 'exact', head: true }
+            )
+            .eq('application.owner_id', user.id);
 
-          // Sohbet: Bu yapımcının konuşmaları (conversations → applications → listings)
-          {
-            const { count } = await supabase
-              .from('conversations')
-              .select(
-                `
-                  id,
-                  application_id,
-                  created_at,
-                  application:applications!inner (
-                    id,
-                    listing_id,
-                    writer_id,
-                    script_id,
-                    status,
-                    created_at,
-                    listing:v_listings_unified!inner (
-                      id,
-                      owner_id,
-                      title,
-                      source
-                    )
-                  )
-                `,
-                { count: 'exact', head: true }
-              )
-              .eq('application.owner_id', user.id);
-            setChatCount(count ?? 0);
-          }
+          setChatCount(count ?? 0);
         } else if (role === 'writer') {
-          // Bildirim: bu yazarın BAŞVURULARI (accepted/rejected) → eylem gerektiren
-          {
-            const { count } = await supabase
-              .from('applications')
-              .select(
-                'id, listing_id, writer_id, script_id, status, created_at',
-                { count: 'exact', head: true }
-              )
-              .eq('writer_id', user.id)
-              .in('status', ['accepted', 'rejected']);
-            setNotifCount(count ?? 0);
-          }
+          const { count: notificationCount } = await supabase
+            .from('notifications')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .in('event_type', [
+              'application_decision',
+              'producer_interest_registered',
+              'script_purchased',
+            ])
+            .is('read_at', null);
 
-          // Sohbet: Bu yazarın konuşmaları (conversations → applications)
-          {
-            const { count } = await supabase
-              .from('conversations')
-              .select(
-                `
+          setNotifCount(notificationCount ?? 0);
+
+          const { count } = await supabase
+            .from('conversations')
+            .select(
+              `
+                id,
+                application_id,
+                created_at,
+                application:applications!inner (
                   id,
-                  application_id,
-                  created_at,
-                  application:applications!inner (
-                    id,
-                    listing_id,
-                    writer_id,
-                    script_id,
-                    status,
-                    created_at
-                  )
-                `,
-                { count: 'exact', head: true }
-              )
-              .eq('application.writer_id', user.id);
-            setChatCount(count ?? 0);
-          }
+                  listing_id,
+                  writer_id,
+                  script_id,
+                  status,
+                  created_at
+                )
+              `,
+              { count: 'exact', head: true }
+            )
+            .eq('application.writer_id', user.id);
+
+          setChatCount(count ?? 0);
         } else {
           setNotifCount(0);
           setChatCount(0);
