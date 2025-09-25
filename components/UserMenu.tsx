@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
@@ -14,6 +14,8 @@ export default function UserMenu() {
   const [registerOpen, setRegisterOpen] = useState(false);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const [updatingRole, setUpdatingRole] = useState(false);
+  const menuRootRef = useRef<HTMLDivElement | null>(null);
+  const toggleButtonRef = useRef<HTMLButtonElement | null>(null);
 
   // 🔔 Sayaçlar
   const [notifCount, setNotifCount] = useState<number>(0); // Bildirim sayacı
@@ -46,6 +48,58 @@ export default function UserMenu() {
     if (!menuOpen) {
       setRoleMenuOpen(false);
     }
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      const menuRoot = menuRootRef.current;
+      const toggleButton = toggleButtonRef.current;
+
+      if (menuRoot?.contains(target || null)) {
+        return;
+      }
+
+      if (toggleButton?.contains(target || null)) {
+        return;
+      }
+
+      setMenuOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (menuOpen) {
+      const focusable = menuRootRef.current?.querySelector<HTMLElement>(
+        '[data-menu-focus="true"]'
+      );
+
+      if (focusable) {
+        focusable.focus();
+      }
+      return;
+    }
+
+    toggleButtonRef.current?.focus();
   }, [menuOpen]);
 
   // Sayaçları role’e göre yükle
@@ -317,6 +371,7 @@ export default function UserMenu() {
         title={user.email}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
+        ref={toggleButtonRef}
       >
         <span className="truncate max-w-[88px] block">{displayLabel}</span>
       </button>
@@ -325,6 +380,9 @@ export default function UserMenu() {
         <div
           className="absolute right-0 mt-2 w-[240px] bg-white shadow-lg rounded-lg border z-50"
           role="menu"
+          tabIndex={-1}
+          aria-hidden={false}
+          ref={menuRootRef}
         >
           <div className="px-4 py-2 border-b text-sm text-gray-600">
             {user.email}
@@ -342,6 +400,7 @@ export default function UserMenu() {
               aria-expanded={roleMenuOpen}
               aria-haspopup="menu"
               disabled={updatingRole}
+              data-menu-focus="true"
             >
               <span>
                 🧭 Rol Değiştir
