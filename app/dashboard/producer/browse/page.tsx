@@ -61,23 +61,10 @@ export default function BrowseScriptsPage() {
       }
 
       try {
-        const { error } = await supabase.rpc('enqueue_notification', {
-          recipient_id: writerId,
-          template: 'producer_interest_registered',
-          payload: {
-            script_id: script.id,
-            script_title: script.title,
-            producer_id: producerId,
-          },
-        });
-
-        if (error) {
-          throw error;
-        }
-
+        // İlgiyi kaydeden tetikleyici bildirim oluşturur.
         return true;
       } catch (error) {
-        console.error('İlgi bildirimi kuyruğa eklenemedi:', error);
+        console.error('İlgi bildirimi tetiklenemedi:', error);
         return false;
       }
     },
