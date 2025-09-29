@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import AuthGuard from '@/components/AuthGuard';
 import { getSupabaseClient } from '@/lib/supabaseClient';
+import { calculateTaxBreakdown } from '@/lib/taxBreakdown';
 
 type OrderRow = {
   id: string;
@@ -22,22 +23,6 @@ const formatPrice = (priceCents: number | null) => {
     style: 'currency',
     currency: 'TRY',
   });
-};
-
-export const calculateTaxBreakdown = (priceCents: number | null) => {
-  if (priceCents == null) {
-    return null;
-  }
-
-  const netCents = priceCents;
-  const vatCents = Math.round(netCents * 0.2);
-  const grossCents = netCents + vatCents;
-
-  return {
-    netCents,
-    vatCents,
-    grossCents,
-  } as const;
 };
 
 const formatDateTime = (isoString: string) => {

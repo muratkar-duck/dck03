@@ -1,4 +1,4 @@
-import { calculateTaxBreakdown } from '@/app/dashboard/producer/purchases/page';
+import { calculateTaxBreakdown } from '@/lib/taxBreakdown';
 
 describe('calculateTaxBreakdown', () => {
   it('returns null when price is null', () => {
