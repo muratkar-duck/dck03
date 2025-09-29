@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
@@ -12,6 +12,7 @@ export default function UserMenu() {
   const [user, setUser] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
+
 
   // 🔔 Sayaçlar
   const [notifCount, setNotifCount] = useState<number>(0); // Bildirim sayacı
@@ -39,6 +40,7 @@ export default function UserMenu() {
       authListener.subscription.unsubscribe();
     };
   }, [supabase]);
+
 
   // Sayaçları role’e göre yükle
   useEffect(() => {
@@ -286,10 +288,12 @@ export default function UserMenu() {
         >
           <div className="px-4 py-3 border-b text-sm text-gray-600">
             <div className="font-medium text-gray-900">{user.email}</div>
+
             {currentRoleLabel ? (
               <div className="text-xs text-gray-500">Rol: {currentRoleLabel}</div>
             ) : null}
           </div>
+
 
           <button
             className="flex w-full items-center justify-between px-4 py-2 hover:bg-gray-100 text-left"
