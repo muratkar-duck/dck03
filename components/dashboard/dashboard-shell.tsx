@@ -79,7 +79,7 @@ export function DashboardShell({ children, navItems }: DashboardShellProps) {
     >
       {/* Desktop sidebar */}
       <aside
-        className="hidden w-72 shrink-0 flex-col justify-between border-r border-white/10 bg-[var(--dashboard-nav-bg)] px-6 pb-8 pt-10 text-white md:flex"
+        className="hidden w-72 shrink-0 flex-col justify-between border-r border-white/10 bg-[var(--dashboard-nav-bg)] px-6 pb-8 pt-10 text-white md:sticky md:top-0 md:flex md:h-[100dvh] md:max-h-[100dvh] md:overflow-y-auto"
         aria-label="Panel gezinme"
       >
         <div className="space-y-10">

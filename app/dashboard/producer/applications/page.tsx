@@ -62,14 +62,17 @@ export default function ProducerApplicationsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [idFilterType, setIdFilterType] = useState<IdFilter>('all');
   const [idFilterValue, setIdFilterValue] = useState('');
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const supabase = useMemo(getSupabaseClient, []);
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
 
     if (!supabase) {
       setApplications([]);
       setTotalCount(0);
+      setFetchError('Supabase istemcisi kullanılamıyor.');
       setLoading(false);
       return;
     }
@@ -81,6 +84,7 @@ export default function ProducerApplicationsPage() {
     if (!user) {
       setApplications([]);
       setTotalCount(0);
+      setFetchError('Oturum doğrulanamadı. Lütfen tekrar giriş yapın.');
       setLoading(false);
       return;
     }
@@ -137,6 +141,7 @@ export default function ProducerApplicationsPage() {
       console.error('Başvurular alınamadı:', error.message);
       setApplications([]);
       setTotalCount(0);
+      setFetchError('Başvurular yüklenemedi. Lütfen daha sonra tekrar deneyin.');
     } else {
       const takeFirst = <T,>(value: MaybeArray<T>): T | null => {
         if (Array.isArray(value)) {
@@ -233,6 +238,7 @@ export default function ProducerApplicationsPage() {
           return;
         }
       }
+      setFetchError(null);
     }
 
     setLoading(false);
@@ -425,12 +431,18 @@ export default function ProducerApplicationsPage() {
                 className="rounded border border-[#d4c2a8] px-2 py-1 text-sm"
               />
             </label>
-          </div>
         </div>
+      </div>
 
-        {loading ? (
-          <p className="text-sm text-[#a38d6d]">Yükleniyor...</p>
-        ) : applications.length === 0 ? (
+      {fetchError ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {fetchError}
+        </div>
+      ) : null}
+
+      {loading ? (
+        <p className="text-sm text-[#a38d6d]">Yükleniyor...</p>
+      ) : applications.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-[#e0d2bf] bg-white p-10 text-center text-[#7a5c36]">
             <span className="text-4xl" role="img" aria-hidden>
               📭

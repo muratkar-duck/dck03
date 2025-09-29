@@ -15,15 +15,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="tr">
-      <body className="flex min-h-screen flex-col bg-[#faf3e0] text-[#7a5c36] font-sans">
+      <body className="flex min-h-screen flex-col overflow-x-hidden bg-[#faf3e0] text-[#7a5c36] font-sans">
         <TabTitleHandler />
 
         <AppHeader />
 
-        <main className="flex-1 max-w-7xl mx-auto px-4 py-10">{children}</main>
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-10">{children}</main>
 
         <footer
-          className="bg-forest text-brand py-4"
+          className="w-full bg-forest text-brand py-4"
           data-test-id="app-footer"
         >
           <div className="mx-auto max-w-7xl px-4 text-center text-sm opacity-80">

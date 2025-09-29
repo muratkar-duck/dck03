@@ -63,7 +63,7 @@ export default function NewProducerListingPage() {
     let deadlineValue: string | null = null;
 
     if (deadline) {
-      const parsedDeadline = new Date(deadline);
+      const parsedDeadline = new Date(`${deadline}T23:59:59`);
 
       if (Number.isNaN(parsedDeadline.getTime())) {
         alert('Lütfen geçerli bir son teslim tarihi girin.');
@@ -79,7 +79,7 @@ export default function NewProducerListingPage() {
         return;
       }
 
-      deadlineValue = parsedDeadline.toISOString();
+      deadlineValue = deadline;
     }
 
     const { error } = await supabase.from('producer_listings').insert([
@@ -155,7 +155,7 @@ export default function NewProducerListingPage() {
               Son Teslim Tarihi
             </label>
             <input
-              type="datetime-local"
+              type="date"
               className="w-full p-2 border rounded-lg"
               value={deadline}
               onChange={(event) => setDeadline(event.target.value)}

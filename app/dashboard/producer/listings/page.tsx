@@ -16,16 +16,29 @@ const dateFormatter = new Intl.DateTimeFormat('tr-TR', {
   dateStyle: 'medium',
 });
 
-const dateTimeFormatter = new Intl.DateTimeFormat('tr-TR', {
-  dateStyle: 'medium',
-  timeStyle: 'short',
-});
-
 const budgetLabel = (budgetCents: number | null | undefined) => {
   if (typeof budgetCents === 'number') {
     return currencyFormatter.format(budgetCents / 100);
   }
   return 'Belirtilmemiş';
+};
+
+const formatDeadline = (deadline: string | null | undefined) => {
+  if (!deadline) {
+    return '—';
+  }
+
+  const normalized = deadline.includes('T')
+    ? deadline
+    : `${deadline}T00:00:00`;
+
+  const parsed = new Date(normalized);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return '—';
+  }
+
+  return dateFormatter.format(parsed);
 };
 
 export default function ProducerListingsPage() {
@@ -140,12 +153,7 @@ export default function ProducerListingsPage() {
                     <span>
                       Oluşturuldu: {dateFormatter.format(new Date(listing.created_at))}
                     </span>
-                    <span>
-                      Son teslim:{' '}
-                      {listing.deadline
-                        ? dateTimeFormatter.format(new Date(listing.deadline))
-                        : 'Belirtilmemiş'}
-                    </span>
+                    <span>Son teslim: {formatDeadline(listing.deadline)}</span>
                     {listing.source === 'requests' ? (
                       <span className="text-xs uppercase tracking-wide text-[#a38d6d]">
                         Eski Talep
