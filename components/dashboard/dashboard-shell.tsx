@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 
 export type DashboardNavItem = {
   href: string;
@@ -73,9 +73,9 @@ export function DashboardShell({ children, navItems }: DashboardShellProps) {
     <section
       className="relative flex min-h-screen bg-[#faf3e0] text-[#0e5b4a]"
       style={{
-        ['--dashboard-accent' as '--dashboard-accent']: ACCENT,
-        ['--dashboard-nav-bg' as '--dashboard-nav-bg']: NAV_BG,
-      }}
+        '--dashboard-accent': ACCENT,
+        '--dashboard-nav-bg': NAV_BG,
+      } as CSSProperties}
     >
       {/* Desktop sidebar */}
       <aside
