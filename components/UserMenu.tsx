@@ -12,10 +12,7 @@ export default function UserMenu() {
   const [user, setUser] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
-  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
-  const [updatingRole, setUpdatingRole] = useState(false);
-  const menuRootRef = useRef<HTMLDivElement | null>(null);
-  const toggleButtonRef = useRef<HTMLButtonElement | null>(null);
+
 
   // 🔔 Sayaçlar
   const [notifCount, setNotifCount] = useState<number>(0); // Bildirim sayacı
@@ -44,63 +41,6 @@ export default function UserMenu() {
     };
   }, [supabase]);
 
-  useEffect(() => {
-    if (!menuOpen) {
-      setRoleMenuOpen(false);
-    }
-  }, [menuOpen]);
-
-  useEffect(() => {
-    if (!menuOpen) {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      const menuRoot = menuRootRef.current;
-      const toggleButton = toggleButtonRef.current;
-
-      if (menuRoot?.contains(target || null)) {
-        return;
-      }
-
-      if (toggleButton?.contains(target || null)) {
-        return;
-      }
-
-      setMenuOpen(false);
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        setMenuOpen(false);
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [menuOpen]);
-
-  useEffect(() => {
-    if (menuOpen) {
-      const focusable = menuRootRef.current?.querySelector<HTMLElement>(
-        '[data-menu-focus="true"]'
-      );
-
-      if (focusable) {
-        focusable.focus();
-      }
-      return;
-    }
-
-    toggleButtonRef.current?.focus();
-  }, [menuOpen]);
 
   // Sayaçları role’e göre yükle
   useEffect(() => {
@@ -300,41 +240,7 @@ export default function UserMenu() {
     writer: 'Senarist',
     producer: 'Yapımcı',
   };
-  const roleOptions: { value: Role; label: string; emoji: string }[] = [
-    { value: 'writer', label: 'Senarist', emoji: '✍️' },
-    { value: 'producer', label: 'Yapımcı', emoji: '🎬' },
-  ];
   const currentRoleLabel = role ? roleLabelMap[role] : undefined;
-
-  const handleRoleChange = async (nextRole: Role) => {
-    if (!user || role === nextRole) {
-      setRoleMenuOpen(false);
-      return;
-    }
-
-    if (!supabase) {
-      console.error('Supabase istemcisi bulunamadı.');
-      setRoleMenuOpen(false);
-      return;
-    }
-
-    setUpdatingRole(true);
-    try {
-      const { error } = await supabase.auth.updateUser({
-        data: { role: nextRole },
-      });
-      if (error) throw error;
-
-      await supabase.auth.refreshSession();
-      const { data } = await supabase.auth.getUser();
-      setUser(data?.user || null);
-    } catch (err) {
-      console.error('Rol güncelleme hatası', err);
-    } finally {
-      setUpdatingRole(false);
-      setRoleMenuOpen(false);
-    }
-  };
 
   const goDashboard = () => {
     if (role === 'writer') router.push('/dashboard/writer');
@@ -371,7 +277,6 @@ export default function UserMenu() {
         title={user.email}
         aria-expanded={menuOpen}
         aria-haspopup="menu"
-        ref={toggleButtonRef}
       >
         <span className="truncate max-w-[88px] block">{displayLabel}</span>
       </button>
@@ -380,64 +285,20 @@ export default function UserMenu() {
         <div
           className="absolute right-0 mt-2 w-[240px] bg-white shadow-lg rounded-lg border z-50"
           role="menu"
-          tabIndex={-1}
-          aria-hidden={false}
-          ref={menuRootRef}
         >
-          <div className="px-4 py-2 border-b text-sm text-gray-600">
-            {user.email}
+          <div className="px-4 py-3 border-b text-sm text-gray-600">
+            <div className="font-medium text-gray-900">{user.email}</div>
+
             {currentRoleLabel ? (
-              <span className="ml-2 text-xs font-medium text-gray-500">
-                ({currentRoleLabel})
-              </span>
+              <div className="text-xs text-gray-500">Rol: {currentRoleLabel}</div>
             ) : null}
           </div>
 
-          <div className="relative border-b">
-            <button
-              className="flex w-full items-center justify-between px-4 py-2 text-left hover:bg-gray-100"
-              onClick={() => setRoleMenuOpen((v) => !v)}
-              aria-expanded={roleMenuOpen}
-              aria-haspopup="menu"
-              disabled={updatingRole}
-              data-menu-focus="true"
-            >
-              <span>
-                🧭 Rol Değiştir
-                {currentRoleLabel ? ` · ${currentRoleLabel}` : ''}
-              </span>
-              <span className="text-xs text-gray-500">{roleMenuOpen ? '▲' : '▼'}</span>
-            </button>
-
-            {roleMenuOpen && (
-              <div className="absolute right-3 left-3 z-50 mt-1 rounded-md border bg-white shadow">
-                {roleOptions.map((option) => {
-                  const isActive = option.value === role;
-                  return (
-                    <button
-                      key={option.value}
-                      className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-100 ${
-                        isActive ? 'font-semibold text-[#0e5b4a]' : ''
-                      }`}
-                      onClick={() => handleRoleChange(option.value)}
-                      disabled={updatingRole || isActive}
-                    >
-                      <span>
-                        {option.emoji} {option.label}
-                      </span>
-                      {isActive ? <span>✓</span> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
 
           <button
             className="flex w-full items-center justify-between px-4 py-2 hover:bg-gray-100 text-left"
             onClick={() => {
               goDashboard();
-              setRoleMenuOpen(false);
               setMenuOpen(false);
             }}
             role="menuitem"
@@ -449,7 +310,6 @@ export default function UserMenu() {
             className="flex w-full items-center justify-between px-4 py-2 hover:bg-gray-100 text-left"
             onClick={() => {
               goMessages();
-              setRoleMenuOpen(false);
               setMenuOpen(false);
             }}
             role="menuitem"
@@ -462,7 +322,6 @@ export default function UserMenu() {
             className="flex w-full items-center justify-between px-4 py-2 hover:bg-gray-100 text-left"
             onClick={() => {
               goNotifications();
-              setRoleMenuOpen(false);
               setMenuOpen(false);
             }}
             role="menuitem"
@@ -474,7 +333,6 @@ export default function UserMenu() {
           <button
             className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-red-600"
             onClick={() => {
-              setRoleMenuOpen(false);
               setMenuOpen(false);
               handleSignOut();
             }}
