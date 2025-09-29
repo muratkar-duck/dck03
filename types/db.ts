@@ -33,6 +33,7 @@ export interface Listing {
   genre: string;
   budget_cents: number | null;
   created_at: string;
+  deadline?: string | null;
   source: ListingSource;
 }
 
@@ -44,6 +45,7 @@ export interface ProducerListing {
   genre: string;
   budget_cents: number;
   created_at: string;
+  deadline?: string | null;
 }
 
 export interface Request {
