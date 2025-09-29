@@ -4,7 +4,7 @@ import { Typewriter } from 'react-simple-typewriter';
 
 export default function HomePage() {
   return (
-    <div className="space-y-12">
+    <div className="space-y-16">
       {/* Hero */}
       <section className="text-center">
         <h1 className="text-4xl font-bold mb-4">Senaryonuz Dünyaya Ulaşsın</h1>
@@ -66,20 +66,6 @@ export default function HomePage() {
             <h3 className="text-lg font-semibold mb-2">Güvenli Ödeme</h3>
             <p>Komisyon sistemiyle korunan adil ödeme altyapısı.</p>
           </div>
-        </div>
-      </section>
-      {/* Demo Panel Linkleri */}
-      <section className="text-center space-y-4">
-        <p className="text-sm text-[#7a5c36] opacity-80">
-          👀 Demo amaçlı olarak aşağıdaki bağlantıları kullanabilirsiniz:
-        </p>
-        <div className="flex justify-center gap-4 flex-wrap">
-          <a href="/dashboard/writer" className="btn btn-secondary">
-            Senarist Paneli
-          </a>
-          <a href="/dashboard/producer" className="btn btn-secondary">
-            Yapımcı Paneli
-          </a>
         </div>
       </section>
     </div>
