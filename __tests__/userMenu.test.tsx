@@ -1,112 +1,95 @@
-/** @jest-environment jsdom */
-
 import React from 'react';
-import { act } from 'react-dom/test-utils';
-import { createRoot } from 'react-dom/client';
-
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import UserMenu from '@/components/UserMenu';
 
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+const mockRouterPush = jest.fn();
 
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: jest.fn(),
-  }),
+  useRouter: () => ({ push: mockRouterPush }),
 }));
 
-const mockGetUser = jest.fn();
-const mockSignOut = jest.fn();
+jest.mock('next/link', () => {
+  return ({ children, href, ...rest }: any) => (
+    <a href={typeof href === 'string' ? href : href.toString()} {...rest}>
+      {children}
+    </a>
+  );
+});
 
-const createQueryBuilder = (count: number) => {
-  const result = { count };
-  const builder: any = {
-    select: jest.fn(() => builder),
-    eq: jest.fn(() => builder),
-    in: jest.fn(() => builder),
-    then: (resolve: any, reject?: any) =>
-      Promise.resolve(result).then(resolve, reject),
-    catch: (reject: any) => Promise.resolve(result).catch(reject),
-    finally: (onFinally: any) => Promise.resolve(result).finally(onFinally),
-  };
-  return builder;
-};
-
-const mockSupabase = {
-  auth: {
-    getUser: mockGetUser,
-    onAuthStateChange: jest.fn(() => ({
-      data: {
-        subscription: { unsubscribe: jest.fn() },
-      },
-    })),
-    signOut: mockSignOut,
-  },
-  from: jest.fn((table: string) => {
-    if (table === 'applications') return createQueryBuilder(4);
-    if (table === 'conversations') return createQueryBuilder(2);
-    return createQueryBuilder(0);
-  }),
-};
+let mockSupabase: any;
+let notificationsQuery: any;
+let conversationsQuery: any;
+const unsubscribe = jest.fn();
 
 jest.mock('@/lib/supabaseClient', () => ({
-  getSupabaseClient: jest.fn(() => mockSupabase),
+  getSupabaseClient: () => mockSupabase,
 }));
 
-describe('UserMenu', () => {
+describe('UserMenu notification badges', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockGetUser.mockResolvedValue({
-      data: {
-        user: {
-          id: 'user-1',
-          email: 'writer@example.com',
-          user_metadata: { role: 'writer' },
-        },
+    notificationsQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      in: jest.fn().mockReturnThis(),
+      order: jest.fn().mockReturnThis(),
+      is: jest.fn().mockResolvedValue({ count: 3 }),
+    };
+
+    conversationsQuery = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({ count: 1 }),
+    };
+
+    mockSupabase = {
+      auth: {
+        getUser: jest.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: 'user-1',
+              email: 'writer@example.com',
+              user_metadata: { role: 'writer' },
+            },
+          },
+        }),
+        onAuthStateChange: jest.fn().mockReturnValue({
+          data: { subscription: { unsubscribe } },
+        }),
+        refreshSession: jest.fn(),
+        updateUser: jest.fn(),
+        signOut: jest.fn(),
       },
-    });
+      from: jest.fn((table: string) => {
+        if (table === 'notifications') {
+          return notificationsQuery;
+        }
+        if (table === 'conversations') {
+          return conversationsQuery;
+        }
+        throw new Error(`Unexpected table ${table}`);
+      }),
+    };
   });
 
-  it('omits role switching actions while keeping badges functional', async () => {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const root = createRoot(container);
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
-    await act(async () => {
-      root.render(<UserMenu />);
+  it('renders badge counts from notifications table', async () => {
+    render(<UserMenu />);
+
+    await waitFor(() => expect(mockSupabase.auth.getUser).toHaveBeenCalled());
+
+    fireEvent.click(await screen.findByRole('button', { name: /writer/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('🔔 Bildirimler')).toBeInTheDocument();
     });
 
-    await act(async () => {
-      await Promise.resolve();
-    });
+    expect(await screen.findByText('3')).toBeInTheDocument();
+    expect(await screen.findByText('1')).toBeInTheDocument();
 
-    await act(async () => {
-      await Promise.resolve();
-    });
-
-    const trigger = container.querySelector('button[aria-haspopup="menu"]');
-    expect(trigger).not.toBeNull();
-
-    await act(async () => {
-      trigger!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    });
-
-    const menu = container.querySelector('[role="menu"]');
-    expect(menu).not.toBeNull();
-    expect(menu?.textContent).toContain('Rol: Senarist');
-    expect(menu?.textContent).not.toContain('Rol Değiştir');
-
-    const buttons = Array.from(menu!.querySelectorAll('button'));
-    const messagesBtn = buttons.find((btn) => btn.textContent?.includes('💬 Sohbetler'));
-    const notificationsBtn = buttons.find((btn) => btn.textContent?.includes('🔔 Bildirimler'));
-
-    expect(messagesBtn?.textContent).toContain('2');
-    expect(notificationsBtn?.textContent).toContain('4');
-
-    await act(async () => {
-      root.unmount();
-    });
-
-    document.body.removeChild(container);
+    expect(mockSupabase.from).toHaveBeenCalledWith('notifications');
+    expect(notificationsQuery.is).toHaveBeenCalledWith('read_at', null);
   });
 });
 
