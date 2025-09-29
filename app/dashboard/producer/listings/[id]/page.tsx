@@ -54,6 +54,10 @@ export default function ProducerListingDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [purchaseTarget, setPurchaseTarget] = useState<ApplicationRow | null>(
+    null
+  );
+  const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const supabase = useMemo(getSupabaseClient, []);
 
@@ -287,11 +291,90 @@ export default function ProducerListingDetailPage() {
     }
   };
 
+  const handlePurchase = async (application: ApplicationRow) => {
+    if (!application.script?.id) {
+      alert('Satın alma işlemi için senaryo bilgisi bulunamadı.');
+      return;
+    }
+
+    if (!supabase) {
+      alert('Supabase istemcisi kullanılamıyor.');
+      return;
+    }
+
+    let buyerId = currentUserId;
+
+    if (!buyerId) {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) {
+        alert('❌ Oturum doğrulanamadı: ' + authError.message);
+        return;
+      }
+
+      if (!user) {
+        alert('❌ Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+        return;
+      }
+
+      buyerId = user.id;
+      setCurrentUserId(user.id);
+    }
+
+    setPurchasingId(application.id);
+
+    const { error: orderError } = await supabase.from('orders').insert({
+      script_id: application.script.id,
+      buyer_id: buyerId,
+      amount_cents: application.script.price_cents ?? 0,
+    });
+
+    if (orderError) {
+      console.error(orderError);
+      alert('❌ Satın alma işlemi tamamlanamadı: ' + orderError.message);
+      setPurchasingId(null);
+      return;
+    }
+
+    const { error: updateError } = await supabase
+      .from('applications')
+      .update({ status: 'purchased' })
+      .eq('id', application.id);
+
+    if (updateError) {
+      console.error(updateError);
+      alert('⚠️ Satın alma kaydedildi ancak başvuru güncellenemedi: ' + updateError.message);
+      setPurchasingId(null);
+      return;
+    }
+
+    setApplications((prev) =>
+      prev.map((app) =>
+        app.id === application.id ? { ...app, status: 'purchased' } : app
+      )
+    );
+
+    setPurchasingId(null);
+    setPurchaseTarget(null);
+    alert('🧾 Satın alma işlemi başarıyla tamamlandı.');
+  };
+
   const getStatusBadge = (status: string) => {
     if (status === 'accepted') {
       return (
         <span className="rounded bg-green-100 px-2 py-1 text-xs font-semibold text-green-700">
           Kabul edildi
+        </span>
+      );
+    }
+
+    if (status === 'purchased') {
+      return (
+        <span className="rounded bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
+          Satın alındı
         </span>
       );
     }
@@ -414,11 +497,33 @@ export default function ProducerListingDetailPage() {
                               ❌ Reddet
                             </button>
                           </>
-                        ) : (
+                        ) : null}
+
+                        {app.status !== 'pending' ? (
                           <p className="text-sm text-[#4f3d2a]">
                             Bu başvuru için karar verdiniz.
                           </p>
-                        )}
+                        ) : null}
+
+                        {app.status === 'accepted' ? (
+                          <button
+                            type="button"
+                            onClick={() => setPurchaseTarget(app)}
+                            disabled={purchasingId === app.id}
+                            className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            🛒 Satın Al
+                          </button>
+                        ) : null}
+
+                        {app.status === 'purchased' ? (
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-lg bg-[#0e5b4a] px-3 py-2 text-sm font-semibold text-white opacity-80"
+                          >
+                            📄 PDF indir
+                          </button>
+                        ) : null}
 
                         {app.script?.id && (
                           <Link
@@ -437,6 +542,41 @@ export default function ProducerListingDetailPage() {
           </>
         )}
       </div>
+
+      {purchaseTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md space-y-4 rounded-lg bg-white p-6 shadow-xl">
+            <div className="space-y-2 text-center">
+              <h3 className="text-lg font-semibold text-[#0e5b4a]">
+                Satın alma işlemini onaylayın
+              </h3>
+              <p className="text-sm text-[#4f3d2a]">
+                {purchaseTarget.script?.title ?? 'Belirsiz senaryo'} için satın alma işlemini başlatmak üzeresiniz.
+              </p>
+              <p className="text-xs text-[#7a5c36]">
+                Tahmini ücret: {formatPrice(purchaseTarget.script?.price_cents)}
+              </p>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPurchaseTarget(null)}
+                className="inline-flex items-center gap-1 rounded-lg border border-[#a38d6d] px-3 py-2 text-sm font-semibold text-[#4f3d2a] transition hover:bg-[#f5ede1]"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePurchase(purchaseTarget)}
+                disabled={purchasingId === purchaseTarget.id}
+                className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Satın almayı tamamla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AuthGuard>
   );
 }
