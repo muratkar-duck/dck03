@@ -96,7 +96,7 @@ export default function ProducerListingDetailPage() {
         const { data: listingData, error: listingError } = await supabase
           .from('v_listings_unified')
           .select(
-            'id, owner_id, title, description, genre, budget_cents, created_at, source'
+            'id, owner_id, title, description, genre, budget_cents, created_at, deadline, source'
           )
           .eq('id', listingId)
           .maybeSingle();
@@ -426,6 +426,12 @@ export default function ProducerListingDetailPage() {
               </p>
               <p className="text-xs text-[#a38d6d]">
                 Oluşturulma tarihi: {dateFormatter.format(new Date(listing.created_at))}
+              </p>
+              <p className="text-xs text-[#a38d6d]">
+                Son teslim tarihi:{' '}
+                {listing.deadline
+                  ? dateTimeFormatter.format(new Date(listing.deadline))
+                  : 'Belirtilmemiş'}
               </p>
               <p className="text-sm text-[#4f3d2a] whitespace-pre-wrap">
                 {listing.description || 'Açıklama bulunamadı.'}
