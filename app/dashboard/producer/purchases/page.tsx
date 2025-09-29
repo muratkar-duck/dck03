@@ -24,6 +24,22 @@ const formatPrice = (priceCents: number | null) => {
   });
 };
 
+export const calculateTaxBreakdown = (priceCents: number | null) => {
+  if (priceCents == null) {
+    return null;
+  }
+
+  const netCents = priceCents;
+  const vatCents = Math.round(netCents * 0.2);
+  const grossCents = netCents + vatCents;
+
+  return {
+    netCents,
+    vatCents,
+    grossCents,
+  } as const;
+};
+
 const formatDateTime = (isoString: string) => {
   try {
     return new Date(isoString).toLocaleString('tr-TR');
@@ -114,33 +130,67 @@ export default function ProducerPurchasesPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {orders.map((order) => (
-              <div key={order.id} className="card space-y-2">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold text-[#0e5b4a]">
-                      {order.script_title}
-                    </h2>
-                    <p className="text-sm text-[#7a5c36]">
-                      Satın alma tarihi: {formatDateTime(order.created_at)}
-                    </p>
+            {orders.map((order) => {
+              const effectivePriceCents =
+                order.amount_cents ?? order.script_price_cents ?? null;
+              const taxDetails = calculateTaxBreakdown(effectivePriceCents);
+
+              return (
+                <div key={order.id} className="card space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-[#0e5b4a]">
+                        {order.script_title}
+                      </h2>
+                      <p className="text-sm text-[#7a5c36]">
+                        Satın alma tarihi: {formatDateTime(order.created_at)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs uppercase tracking-wide text-[#a38d6d]">
+                        Ödenen Tutar
+                      </p>
+                      <p className="text-lg font-bold text-[#0e5b4a]">
+                        {formatPrice(effectivePriceCents)}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs uppercase tracking-wide text-[#a38d6d]">
-                      Ödenen Tutar
+                  {taxDetails && (
+                    <dl className="grid grid-cols-1 gap-3 text-sm text-[#0e5b4a] sm:grid-cols-3">
+                      <div className="rounded-lg bg-[#f8f2ea] p-3">
+                        <dt className="text-xs uppercase tracking-wide text-[#a38d6d]">
+                          Bedel (Net)
+                        </dt>
+                        <dd className="font-semibold">
+                          {formatPrice(taxDetails.netCents)}
+                        </dd>
+                      </div>
+                      <div className="rounded-lg bg-[#f8f2ea] p-3">
+                        <dt className="text-xs uppercase tracking-wide text-[#a38d6d]">
+                          KDV (%20)
+                        </dt>
+                        <dd className="font-semibold">
+                          {formatPrice(taxDetails.vatCents)}
+                        </dd>
+                      </div>
+                      <div className="rounded-lg bg-[#f8f2ea] p-3">
+                        <dt className="text-xs uppercase tracking-wide text-[#a38d6d]">
+                          Toplam (Brüt)
+                        </dt>
+                        <dd className="font-semibold">
+                          {formatPrice(taxDetails.grossCents)}
+                        </dd>
+                      </div>
+                    </dl>
+                  )}
+                  {order.script_price_cents != null && (
+                    <p className="text-xs text-[#a38d6d]">
+                      Liste fiyatı: {formatPrice(order.script_price_cents)}
                     </p>
-                    <p className="text-lg font-bold text-[#0e5b4a]">
-                      {formatPrice(order.amount_cents ?? order.script_price_cents)}
-                    </p>
-                  </div>
+                  )}
                 </div>
-                {order.script_price_cents != null && (
-                  <p className="text-xs text-[#a38d6d]">
-                    Liste fiyatı: {formatPrice(order.script_price_cents)}
-                  </p>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
