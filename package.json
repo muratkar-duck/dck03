@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint --no-inline-config --max-warnings=0",
     "test": "jest --passWithNoTests",
+    "test:e2e": "playwright test",
     "seed:mvp": "tsx scripts/seed-mvp.ts"
   },
   "dependencies": {
@@ -27,8 +28,7 @@
     "typescript": "5.2.2"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.4.2",
-    "@testing-library/react": "^14.1.2",
+    "@playwright/test": "^1.55.1",
 
     "@types/jest": "^30.0.0",
     "jest-environment-jsdom": "^30.1.2",
