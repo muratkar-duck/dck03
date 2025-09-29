@@ -9,4 +9,5 @@ if (typeof global.TextEncoder === 'undefined') {
 if (typeof global.TextDecoder === 'undefined') {
   // @ts-ignore
   global.TextDecoder = TextDecoder as unknown as typeof global.TextDecoder;
+
 }

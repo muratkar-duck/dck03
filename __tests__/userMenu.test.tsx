@@ -92,3 +92,4 @@ describe('UserMenu notification badges', () => {
     expect(notificationsQuery.is).toHaveBeenCalledWith('read_at', null);
   });
 });
+

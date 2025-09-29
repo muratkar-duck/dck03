@@ -212,15 +212,15 @@ export default function BrowseScriptsPage() {
           return;
         }
 
-        const { error: upsertError } = await supabase
-          .from('interests')
-          .upsert(
-            { producer_id: user.id, script_id: script.id },
-            { onConflict: 'producer_id,script_id' }
-          );
+        const { error: markInterestError } = await supabase.rpc(
+          'rpc_mark_interest',
+          {
+            script_id: script.id,
+          }
+        );
 
-        if (upsertError) {
-          throw upsertError;
+        if (markInterestError) {
+          throw markInterestError;
         }
 
         const notified = await notifyWriterOfInterest({
@@ -229,17 +229,18 @@ export default function BrowseScriptsPage() {
           producerId: user.id,
         });
 
-        if (notified) {
+        if (!notified) {
           showToast(
-            'success',
-            `${script.title} senaryosuna ilgi gösterdiniz. Senarist bilgilendirildi.`
+            'error',
+            `${script.title} senaryosuna ilginiz kaydedildi ancak senaristi bilgilendirme denemesi başarısız oldu.`
           );
-        } else {
-          showToast(
-            'success',
-            `${script.title} senaryosuna ilgi gösterdiniz. Senaristi bilgilendirme denemesi başarısız oldu, lütfen daha sonra kontrol edin.`
-          );
+          return;
         }
+
+        showToast(
+          'success',
+          `${script.title} senaryosuna ilgi gösterdiniz. Senarist bilgilendirildi.`
+        );
       } catch (err: any) {
         console.error('İlgi kaydedilemedi:', err);
         showToast(
