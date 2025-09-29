@@ -15,6 +15,22 @@ type Script = {
   owner_id: string | null;
 };
 
+type FilterState = {
+  search: string;
+  genre: string;
+  length: string;
+  price: string;
+  sort: string;
+};
+
+const createDefaultFilters = (): FilterState => ({
+  search: '',
+  genre: 'Tüm Türler',
+  length: 'Tüm Süreler',
+  price: 'Tüm Fiyatlar',
+  sort: 'En Yeni',
+});
+
 export default function BrowseScriptsPage() {
   const [scripts, setScripts] = useState<Script[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,11 +38,7 @@ export default function BrowseScriptsPage() {
   const supabase = useMemo(getSupabaseClient, []);
 
   // Basit istemci tarafı filtre/sort state (şimdilik demo; sunucuya gönderilmiyor)
-  const [search, setSearch] = useState('');
-  const [selectedGenre, setSelectedGenre] = useState<string>('Tüm Türler');
-  const [selectedLength, setSelectedLength] = useState<string>('Tüm Süreler');
-  const [selectedPrice, setSelectedPrice] = useState<string>('Tüm Fiyatlar');
-  const [selectedSort, setSelectedSort] = useState<string>('En Yeni');
+  const [filters, setFilters] = useState<FilterState>(() => createDefaultFilters());
 
   const [toast, setToast] = useState<
     { type: 'success' | 'error'; message: string } | null
@@ -34,6 +46,10 @@ export default function BrowseScriptsPage() {
   const [pendingInterestId, setPendingInterestId] = useState<string | null>(
     null
   );
+
+  const updateFilter = useCallback((key: keyof FilterState, value: string) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
   useEffect(() => {
     if (!toast) return undefined;
@@ -102,69 +118,79 @@ export default function BrowseScriptsPage() {
   }, [supabase]);
 
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      await fetchScripts();
-    })();
-    return () => {
-      mounted = false;
-    };
+    void fetchScripts();
+  }, [fetchScripts]);
+
+  const resetFilters = useCallback(() => {
+    setFilters(createDefaultFilters());
+    void fetchScripts();
   }, [fetchScripts]);
 
   const filtered = useMemo(() => {
     let arr = [...scripts];
 
     // Başlık arama
-    if (search.trim()) {
+    if (filters.search.trim()) {
       arr = arr.filter((s) =>
-        s.title.toLowerCase().includes(search.toLowerCase())
+        s.title.toLowerCase().includes(filters.search.toLowerCase())
       );
     }
 
     // Tür filtresi
-    if (selectedGenre !== 'Tüm Türler') {
+    if (filters.genre !== 'Tüm Türler') {
       arr = arr.filter((s) =>
-        (s.genre || '').toLowerCase().includes(selectedGenre.toLowerCase())
+        (s.genre || '').toLowerCase().includes(filters.genre.toLowerCase())
       );
     }
 
     // Süre filtresi
-    if (selectedLength !== 'Tüm Süreler') {
+    if (filters.length !== 'Tüm Süreler') {
       arr = arr.filter((s) => {
         const len = s.length ?? 0;
-        if (selectedLength === '0-30 dk') return len <= 30;
-        if (selectedLength === '31-90 dk') return len > 30 && len <= 90;
-        if (selectedLength === '90+ dk') return len > 90;
+        if (filters.length === '0-30 dk') return len <= 30;
+        if (filters.length === '31-90 dk') return len > 30 && len <= 90;
+        if (filters.length === '90+ dk') return len > 90;
         return true;
       });
     }
 
     // Fiyat filtresi
-    if (selectedPrice !== 'Tüm Fiyatlar') {
+    if (filters.price !== 'Tüm Fiyatlar') {
       arr = arr.filter((s) => {
         const price = s.price_cents ?? 0;
-        if (selectedPrice === '0-1000₺') return price <= 100000; // cents
-        if (selectedPrice === '1000-5000₺')
+        if (filters.price === '0-1000₺') return price <= 100000; // cents
+        if (filters.price === '1000-5000₺')
           return price > 100000 && price <= 500000;
-        if (selectedPrice === '5000₺+') return price > 500000;
+        if (filters.price === '5000₺+') return price > 500000;
         return true;
       });
     }
 
     // Sıralama
-    if (selectedSort === 'En Yeni') {
+    if (filters.sort === 'En Yeni') {
       arr.sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
-    } else if (selectedSort === 'Fiyat Artan') {
+    } else if (filters.sort === 'Fiyat Artan') {
       arr.sort((a, b) => (a.price_cents ?? 0) - (b.price_cents ?? 0));
-    } else if (selectedSort === 'Fiyat Azalan') {
+    } else if (filters.sort === 'Fiyat Azalan') {
       arr.sort((a, b) => (b.price_cents ?? 0) - (a.price_cents ?? 0));
     }
 
     return arr;
-  }, [scripts, search, selectedGenre, selectedLength, selectedPrice, selectedSort]);
+  }, [filters, scripts]);
+
+  const isDefaultFilters = useMemo(() => {
+    const defaults = createDefaultFilters();
+    return (
+      filters.search === defaults.search &&
+      filters.genre === defaults.genre &&
+      filters.length === defaults.length &&
+      filters.price === defaults.price &&
+      filters.sort === defaults.sort
+    );
+  }, [filters]);
 
   const formatMinutes = (m: number | null) => {
     if (m == null) return '-';
@@ -308,20 +334,20 @@ export default function BrowseScriptsPage() {
       )}
 
       {/* Filtreler */}
-      <div className="flex flex-wrap gap-4 mb-6">
+      <div className="mb-6 flex flex-wrap items-end gap-4">
         <input
           type="text"
           className="p-2 border rounded-lg flex-1 min-w-[150px]"
           placeholder="Başlık ara"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={filters.search}
+          onChange={(e) => updateFilter('search', e.target.value)}
           aria-label="Başlık arama"
         />
 
         <select
           className="p-2 border rounded-lg"
-          value={selectedGenre}
-          onChange={(e) => setSelectedGenre(e.target.value)}
+          value={filters.genre}
+          onChange={(e) => updateFilter('genre', e.target.value)}
           aria-label="Tür filtreleme"
         >
           <option>Tüm Türler</option>
@@ -334,8 +360,8 @@ export default function BrowseScriptsPage() {
 
         <select
           className="p-2 border rounded-lg"
-          value={selectedLength}
-          onChange={(e) => setSelectedLength(e.target.value)}
+          value={filters.length}
+          onChange={(e) => updateFilter('length', e.target.value)}
           aria-label="Süre filtreleme"
         >
           <option>Tüm Süreler</option>
@@ -346,8 +372,8 @@ export default function BrowseScriptsPage() {
 
         <select
           className="p-2 border rounded-lg"
-          value={selectedPrice}
-          onChange={(e) => setSelectedPrice(e.target.value)}
+          value={filters.price}
+          onChange={(e) => updateFilter('price', e.target.value)}
           aria-label="Fiyat filtreleme"
         >
           <option>Tüm Fiyatlar</option>
@@ -358,14 +384,23 @@ export default function BrowseScriptsPage() {
 
         <select
           className="p-2 border rounded-lg"
-          value={selectedSort}
-          onChange={(e) => setSelectedSort(e.target.value)}
+          value={filters.sort}
+          onChange={(e) => updateFilter('sort', e.target.value)}
           aria-label="Sıralama"
         >
           <option>En Yeni</option>
           <option>Fiyat Artan</option>
           <option>Fiyat Azalan</option>
         </select>
+
+        <button
+          type="button"
+          onClick={resetFilters}
+          className="btn btn-secondary"
+          disabled={isDefaultFilters}
+        >
+          Filtreleri Kaldır
+        </button>
       </div>
 
       {/* Senaryo Kartları */}

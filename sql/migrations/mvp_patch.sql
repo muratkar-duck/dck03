@@ -301,6 +301,7 @@ select
   l.genre,
   l.budget_cents,
   l.created_at,
+  l.deadline,
   'producer_listings'::text as source
 from public.producer_listings l
 union all
@@ -315,5 +316,6 @@ select
     else round(r.budget)::integer
   end as budget_cents,
   r.created_at,
+  r.deadline::date,
   'requests'::text as source
 from public.requests r;

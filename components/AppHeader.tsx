@@ -88,7 +88,7 @@ export default function AppHeader() {
 
   return (
     <header
-      className="bg-forest text-brand py-4 shadow-md"
+      className="w-full bg-forest text-brand py-4 shadow-md"
       data-test-id="HEADER_NAV_V2"
     >
       <div className="mx-auto flex max-w-7xl items-center px-4">
