@@ -115,7 +115,11 @@ export function DashboardShell({ children, navItems }: DashboardShellProps) {
             <MenuIcon open={mobileOpen} />
           </button>
         </div>
-        <div className={`fixed inset-0 z-30 bg-black/40 backdrop-blur-sm transition-opacity ${mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}></div>
+        <div
+          className={`fixed inset-0 z-30 bg-black/40 backdrop-blur-sm transition-opacity ${mobileOpen ? 'pointer-events-auto opacity-100' : 'pointer-events-none opacity-0'}`}
+          onClick={() => setMobileOpen(false)}
+          aria-hidden={!mobileOpen}
+        ></div>
         <aside
           className={`fixed inset-y-0 left-0 z-40 flex w-72 max-w-full flex-col overflow-y-auto border-r border-white/10 bg-[var(--dashboard-nav-bg)] px-6 pb-8 pt-16 text-white transition-transform duration-200 ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
