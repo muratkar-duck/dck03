@@ -27,10 +27,28 @@ export function DashboardShell({ children, navItems }: DashboardShellProps) {
     setMobileOpen(false);
   }, [pathname]);
 
+  const normalizedPathname = normalizePath(pathname ?? '/');
+  const { href: activeHref } = navItems.reduce(
+    (best, item) => {
+      if (item.external) return best;
+
+      const matchLength = getMatchLength(normalizedPathname, item.href);
+      if (matchLength > best.length) {
+        return { href: item.href, length: matchLength };
+      }
+
+      return best;
+    },
+    { href: null as string | null, length: -1 },
+  );
+  const normalizedActiveHref = activeHref ? normalizePath(activeHref) : null;
+
   const renderNavItems = () => (
     <nav className="space-y-1 text-sm font-medium tracking-wide">
       {navItems.map((item) => {
-        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const normalizedHref = normalizePath(item.href);
+        const isActive =
+          normalizedActiveHref !== null && normalizedHref === normalizedActiveHref;
         const baseClasses =
           'group flex items-center gap-3 rounded-xl px-4 py-2.5 transition-colors duration-150';
         const stateClasses = isActive
@@ -151,4 +169,29 @@ function MenuIcon({ open }: { open: boolean }) {
       )}
     </svg>
   );
+}
+
+function normalizePath(path: string) {
+  if (!path) return '/';
+  if (path === '/') return '/';
+  return path.replace(/\/+$/, '');
+}
+
+function getMatchLength(pathname: string, href: string) {
+  const normalizedPathname = normalizePath(pathname);
+  const normalizedHref = normalizePath(href);
+
+  if (normalizedHref === '/') {
+    return normalizedPathname === '/' ? 1 : -1;
+  }
+
+  if (normalizedPathname === normalizedHref) {
+    return normalizedHref.length;
+  }
+
+  if (normalizedPathname.startsWith(`${normalizedHref}/`)) {
+    return normalizedHref.length;
+  }
+
+  return -1;
 }
