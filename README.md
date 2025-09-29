@@ -79,6 +79,34 @@ After starting the dev server, run through this quick check:
 4. Switch back to the writer and apply for the posted job.
 5. Confirm a new thread appears under **Messages** for both accounts.
 
+## End-to-End Tests
+
+The project includes a deterministic Playwright harness that validates the writer → producer pipeline without requiring a live Supabase backend.
+
+1. Copy the example test environment file and adjust if needed:
+
+   ```bash
+   cp .env.e2e.example .env.e2e
+   ```
+
+2. Install the Playwright browsers once:
+
+   ```bash
+   npx playwright install
+   ```
+
+3. Run the scripted scenario:
+
+   ```bash
+   npm run test:e2e
+   ```
+
+The harness is served at `/test/pipeline` while `NEXT_PUBLIC_E2E_TEST_MODE=true` and guides the full flow: the writer creates a script, the producer posts a listing, the writer applies, and the producer accepts the application.
+
+## Definition of Done
+
+- Yeni e2e testi yeşil.
+
 ## Supabase dump utility
 
 Use `tools/dump-supabase.ts` to export the Supabase project's public data and metadata. The script prefers the service role key so it can inspect `information_schema` and `pg_catalog`, and falls back to the anon key when the service key isn't available.
