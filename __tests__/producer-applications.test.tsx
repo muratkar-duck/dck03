@@ -77,7 +77,7 @@ describe('ProducerApplicationsPage', () => {
             price_cents: 150000,
           },
           writer: { id: 'writer-1', email: 'writer@example.com' },
-          listing: { id: 'listing-1', title: 'Test Listing', source: 'requests' },
+          listing: { id: 'listing-1', title: 'Test Listing', source: 'request' },
           conversations: [],
         },
       ],

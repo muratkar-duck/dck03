@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { ensureConversationWithParticipants } from '@/lib/conversations';
 import { getSupabaseClient } from '@/lib/supabaseClient';
-import type { Listing } from '@/types/db';
+import type { VListingUnified } from '@/types/db';
 
 type ApplicationRow = {
   id: string;
@@ -49,7 +49,7 @@ const budgetLabel = (budgetCents: number | null | undefined) => {
 export default function ProducerListingDetailPage() {
   const { id: listingId } = useParams<{ id: string }>();
   const router = useRouter();
-  const [listing, setListing] = useState<Listing | null>(null);
+  const [listing, setListing] = useState<VListingUnified | null>(null);
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -115,7 +115,7 @@ export default function ProducerListingDetailPage() {
 
         if (!isMounted) return;
 
-        setListing(listingData as Listing);
+        setListing(listingData as VListingUnified);
 
         const { data: applicationRows, error: applicationsError } = await supabase
           .from('applications')

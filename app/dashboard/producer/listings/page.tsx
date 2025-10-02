@@ -157,7 +157,8 @@ export default function ProducerListingsPage() {
                       Oluşturuldu: {dateFormatter.format(new Date(listing.created_at))}
                     </span>
                     <span>Son teslim: {formatDeadline(listing.deadline)}</span>
-                    {getListingBadge(listing) ? (
+                    {listing.source === 'request' ? (
+
                       <span className="text-xs uppercase tracking-wide text-[#a38d6d]">
                         {getListingBadge(listing)}
                       </span>
