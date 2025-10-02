@@ -15,6 +15,19 @@ type Script = {
   owner_id: string | null;
 };
 
+type UnifiedListing = {
+  id: string;
+  owner_id: string | null;
+  title: string | null;
+  description: string | null;
+  genre: string | null;
+  budget: number | null;
+  created_at: string | null;
+  deadline: string | null;
+  status: string | null;
+  source: string | null;
+};
+
 type FilterState = {
   search: string;
   genre: string;
@@ -33,8 +46,12 @@ const createDefaultFilters = (): FilterState => ({
 
 export default function BrowseScriptsPage() {
   const [scripts, setScripts] = useState<Script[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [scriptsLoading, setScriptsLoading] = useState(true);
+  const [scriptsErrorMsg, setScriptsErrorMsg] = useState<string | null>(null);
+  const [listings, setListings] = useState<UnifiedListing[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(true);
+  const [listingsErrorMsg, setListingsErrorMsg] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'scripts' | 'listings'>('scripts');
   const supabase = useMemo(getSupabaseClient, []);
 
   // Basit istemci tarafı filtre/sort state (şimdilik demo; sunucuya gönderilmiyor)
@@ -88,13 +105,13 @@ export default function BrowseScriptsPage() {
   );
 
   const fetchScripts = useCallback(async () => {
-    setLoading(true);
-    setErrorMsg(null);
+    setScriptsLoading(true);
+    setScriptsErrorMsg(null);
 
     if (!supabase) {
       setScripts([]);
-      setErrorMsg('Supabase istemcisi kullanılamıyor.');
-      setLoading(false);
+      setScriptsErrorMsg('Supabase istemcisi kullanılamıyor.');
+      setScriptsLoading(false);
       return;
     }
 
@@ -111,15 +128,45 @@ export default function BrowseScriptsPage() {
     } catch (e: any) {
       console.error('Veri alınamadı:', e?.message || e);
       setScripts([]);
-      setErrorMsg(e?.message || 'Beklenmeyen bir hata oluştu.');
+      setScriptsErrorMsg(e?.message || 'Beklenmeyen bir hata oluştu.');
     } finally {
-      setLoading(false);
+      setScriptsLoading(false);
+    }
+  }, [supabase]);
+
+  const fetchListings = useCallback(async () => {
+    setListingsLoading(true);
+    setListingsErrorMsg(null);
+
+    if (!supabase) {
+      setListings([]);
+      setListingsErrorMsg('Supabase istemcisi kullanılamıyor.');
+      setListingsLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('v_listings_unified')
+        .select(
+          'id,owner_id,title,description,genre,budget,created_at,deadline,status,source'
+        );
+
+      if (error) throw error;
+      setListings((data as UnifiedListing[]) || []);
+    } catch (e: any) {
+      console.error('İlanlar alınamadı:', e?.message || e);
+      setListings([]);
+      setListingsErrorMsg(e?.message || 'Beklenmeyen bir hata oluştu.');
+    } finally {
+      setListingsLoading(false);
     }
   }, [supabase]);
 
   useEffect(() => {
     void fetchScripts();
-  }, [fetchScripts]);
+    void fetchListings();
+  }, [fetchListings, fetchScripts]);
 
   const resetFilters = useCallback(() => {
     setFilters(createDefaultFilters());
@@ -310,137 +357,251 @@ export default function BrowseScriptsPage() {
       )}
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">🔍 Senaryo Ara</h1>
+          <h1 className="text-2xl font-bold">
+            {activeTab === 'scripts' ? '🔍 Senaryo Ara' : '📋 İlanları İncele'}
+          </h1>
           <p className="text-[#7a5c36]">
-            İlgilendiğiniz türde senaryoları keşfedin. Dilerseniz filtreleme
-            seçeneklerini kullanabilirsiniz.
+            {activeTab === 'scripts'
+              ? 'İlgilendiğiniz türde senaryoları keşfedin. Dilerseniz filtreleme seçeneklerini kullanabilirsiniz.'
+              : 'Yapımcılar için toplanmış ilanları keşfedin ve detaylarını inceleyin.'}
           </p>
         </div>
+        {activeTab === 'scripts' ? (
+          <button
+            type="button"
+            onClick={fetchScripts}
+            className="btn btn-secondary"
+            aria-label="Listeyi yenile"
+          >
+            Yenile
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={fetchListings}
+            className="btn btn-secondary"
+            aria-label="İlanları yenile"
+          >
+            Yenile
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-2 border-b pb-2" role="tablist">
         <button
           type="button"
-          onClick={fetchScripts}
-          className="btn btn-secondary"
-          aria-label="Listeyi yenile"
+          role="tab"
+          id="scripts-tab"
+          className={`px-4 py-2 text-sm font-semibold rounded-t ${
+            activeTab === 'scripts'
+              ? 'bg-white border border-b-0 border-[#d6c1a6] text-[#4a3d2f]'
+              : 'bg-[#f5efe6] text-[#7a5c36]'
+          }`}
+          aria-selected={activeTab === 'scripts'}
+          onClick={() => setActiveTab('scripts')}
         >
-          Yenile
+          Senaryolar
+        </button>
+        <button
+          type="button"
+          role="tab"
+          id="listings-tab"
+          className={`px-4 py-2 text-sm font-semibold rounded-t ${
+            activeTab === 'listings'
+              ? 'bg-white border border-b-0 border-[#d6c1a6] text-[#4a3d2f]'
+              : 'bg-[#f5efe6] text-[#7a5c36]'
+          }`}
+          aria-selected={activeTab === 'listings'}
+          onClick={() => setActiveTab('listings')}
+        >
+          İlanlar
         </button>
       </div>
 
-      {/* Hata mesajı */}
-      {errorMsg && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded p-3">
-          {errorMsg}
-        </div>
-      )}
-
-      {/* Filtreler */}
-      <div className="mb-6 flex flex-wrap items-end gap-4">
-        <input
-          type="text"
-          className="p-2 border rounded-lg flex-1 min-w-[150px]"
-          placeholder="Başlık ara"
-          value={filters.search}
-          onChange={(e) => updateFilter('search', e.target.value)}
-          aria-label="Başlık arama"
-        />
-
-        <select
-          className="p-2 border rounded-lg"
-          value={filters.genre}
-          onChange={(e) => updateFilter('genre', e.target.value)}
-          aria-label="Tür filtreleme"
-        >
-          <option>Tüm Türler</option>
-          <option>Dram</option>
-          <option>Komedi</option>
-          <option>Gerilim</option>
-          <option>Bilim Kurgu</option>
-          <option>Belgesel</option>
-        </select>
-
-        <select
-          className="p-2 border rounded-lg"
-          value={filters.length}
-          onChange={(e) => updateFilter('length', e.target.value)}
-          aria-label="Süre filtreleme"
-        >
-          <option>Tüm Süreler</option>
-          <option>0-30 dk</option>
-          <option>31-90 dk</option>
-          <option>90+ dk</option>
-        </select>
-
-        <select
-          className="p-2 border rounded-lg"
-          value={filters.price}
-          onChange={(e) => updateFilter('price', e.target.value)}
-          aria-label="Fiyat filtreleme"
-        >
-          <option>Tüm Fiyatlar</option>
-          <option>0-1000₺</option>
-          <option>1000-5000₺</option>
-          <option>5000₺+</option>
-        </select>
-
-        <select
-          className="p-2 border rounded-lg"
-          value={filters.sort}
-          onChange={(e) => updateFilter('sort', e.target.value)}
-          aria-label="Sıralama"
-        >
-          <option>En Yeni</option>
-          <option>Fiyat Artan</option>
-          <option>Fiyat Azalan</option>
-        </select>
-
-        <button
-          type="button"
-          onClick={resetFilters}
-          className="btn btn-secondary"
-          disabled={isDefaultFilters}
-        >
-          Filtreleri Kaldır
-        </button>
-      </div>
-
-      {/* Senaryo Kartları */}
-      {loading ? (
-        <p className="text-sm text-gray-500">Yükleniyor...</p>
-      ) : filtered.length === 0 ? (
-        <p className="text-sm text-gray-500">
-          Filtrenize uyan senaryo bulunamadı.
-        </p>
-      ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((s) => (
-            <div className="card space-y-2" key={s.id}>
-              <h2 className="text-lg font-semibold">{s.title}</h2>
-              <p className="text-sm text-[#7a5c36]">
-                Tür: {s.genre || '-'} · Süre: {formatMinutes(s.length)} · Fiyat:{' '}
-                {formatPrice(s.price_cents)}
-              </p>
-              <p className="text-sm text-[#4a3d2f]">{excerpt(s.synopsis)}</p>
-              <div
-                className="flex gap-2 mt-2"
-                data-test-id={`script-${s.id}-interest-actions`}
-              >
-                <button
-                  className="btn btn-primary"
-                  onClick={() => handleInterest(s)}
-                  disabled={pendingInterestId === s.id}
-                  aria-busy={pendingInterestId === s.id}
-                >
-                  {pendingInterestId === s.id ? 'Kaydediliyor…' : 'İlgi Göster'}
-                </button>
-                <Link
-                  href={`/dashboard/producer/scripts/${s.id}`}
-                  className="btn btn-secondary"
-                >
-                  Detaylar
-                </Link>
-              </div>
+      {activeTab === 'scripts' ? (
+        <div role="tabpanel" aria-labelledby="scripts-tab" className="space-y-6">
+          {scriptsErrorMsg && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded p-3">
+              {scriptsErrorMsg}
             </div>
-          ))}
+          )}
+
+          <div className="mb-6 flex flex-wrap items-end gap-4">
+            <input
+              type="text"
+              className="p-2 border rounded-lg flex-1 min-w-[150px]"
+              placeholder="Başlık ara"
+              value={filters.search}
+              onChange={(e) => updateFilter('search', e.target.value)}
+              aria-label="Başlık arama"
+            />
+
+            <select
+              className="p-2 border rounded-lg"
+              value={filters.genre}
+              onChange={(e) => updateFilter('genre', e.target.value)}
+              aria-label="Tür filtreleme"
+            >
+              <option>Tüm Türler</option>
+              <option>Dram</option>
+              <option>Komedi</option>
+              <option>Gerilim</option>
+              <option>Bilim Kurgu</option>
+              <option>Belgesel</option>
+            </select>
+
+            <select
+              className="p-2 border rounded-lg"
+              value={filters.length}
+              onChange={(e) => updateFilter('length', e.target.value)}
+              aria-label="Süre filtreleme"
+            >
+              <option>Tüm Süreler</option>
+              <option>0-30 dk</option>
+              <option>31-90 dk</option>
+              <option>90+ dk</option>
+            </select>
+
+            <select
+              className="p-2 border rounded-lg"
+              value={filters.price}
+              onChange={(e) => updateFilter('price', e.target.value)}
+              aria-label="Fiyat filtreleme"
+            >
+              <option>Tüm Fiyatlar</option>
+              <option>0-1000₺</option>
+              <option>1000-5000₺</option>
+              <option>5000₺+</option>
+            </select>
+
+            <select
+              className="p-2 border rounded-lg"
+              value={filters.sort}
+              onChange={(e) => updateFilter('sort', e.target.value)}
+              aria-label="Sıralama"
+            >
+              <option>En Yeni</option>
+              <option>Fiyat Artan</option>
+              <option>Fiyat Azalan</option>
+            </select>
+
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="btn btn-secondary"
+              disabled={isDefaultFilters}
+            >
+              Filtreleri Kaldır
+            </button>
+          </div>
+
+          {scriptsLoading ? (
+            <p className="text-sm text-gray-500">Yükleniyor...</p>
+          ) : filtered.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Filtrenize uyan senaryo bulunamadı.
+            </p>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filtered.map((s) => (
+                <div className="card space-y-2" key={s.id}>
+                  <h2 className="text-lg font-semibold">{s.title}</h2>
+                  <p className="text-sm text-[#7a5c36]">
+                    Tür: {s.genre || '-'} · Süre: {formatMinutes(s.length)} ·
+                    Fiyat: {formatPrice(s.price_cents)}
+                  </p>
+                  <p className="text-sm text-[#4a3d2f]">{excerpt(s.synopsis)}</p>
+                  <div
+                    className="flex gap-2 mt-2"
+                    data-test-id={`script-${s.id}-interest-actions`}
+                  >
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleInterest(s)}
+                      disabled={pendingInterestId === s.id}
+                      aria-busy={pendingInterestId === s.id}
+                    >
+                      {pendingInterestId === s.id
+                        ? 'Kaydediliyor…'
+                        : 'İlgi Göster'}
+                    </button>
+                    <Link
+                      href={`/dashboard/producer/scripts/${s.id}`}
+                      className="btn btn-secondary"
+                    >
+                      Detaylar
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div role="tabpanel" aria-labelledby="listings-tab" className="space-y-6">
+          {listingsErrorMsg && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded p-3">
+              {listingsErrorMsg}
+            </div>
+          )}
+
+          {listingsLoading ? (
+            <p className="text-sm text-gray-500">İlanlar yükleniyor...</p>
+          ) : listings.length === 0 ? (
+            <p className="text-sm text-gray-500">Henüz ilan bulunmuyor.</p>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-6">
+              {listings.map((listing) => {
+                const formattedDeadline = listing.deadline
+                  ? new Date(listing.deadline).toISOString().slice(0, 10)
+                  : '—';
+                return (
+                  <div className="card space-y-3" key={listing.id}>
+                    <div className="flex items-center justify-between">
+                      <h2 className="text-lg font-semibold">
+                        {listing.title || 'Başlıksız İlan'}
+                      </h2>
+                      <span className="text-xs font-medium uppercase tracking-wide text-[#7a5c36]">
+                        {listing.status || 'Durum Bilinmiyor'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#4a3d2f]">
+                      {listing.description || 'Açıklama eklenmemiş.'}
+                    </p>
+                    <dl className="grid grid-cols-2 gap-2 text-sm text-[#7a5c36]">
+                      <div>
+                        <dt className="font-semibold">Tür</dt>
+                        <dd>{listing.genre || 'Belirtilmemiş'}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-semibold">Bütçe</dt>
+                        <dd>
+                          {listing.budget == null
+                            ? 'Belirtilmemiş'
+                            : new Intl.NumberFormat('tr-TR', {
+                                style: 'currency',
+                                currency: 'TRY',
+                                maximumFractionDigits: 0,
+                              }).format(listing.budget)}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-semibold">Son Tarih</dt>
+                        <dd>{formattedDeadline}</dd>
+                      </div>
+                      <div>
+                        <dt className="font-semibold">Kaynak</dt>
+                        <dd>{listing.source || 'Bilinmiyor'}</dd>
+                      </div>
+                    </dl>
+                    <p className="text-xs text-gray-500">
+                      Oluşturulma: {listing.created_at || '—'}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
