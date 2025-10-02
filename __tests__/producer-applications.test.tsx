@@ -34,7 +34,7 @@ jest.mock('@/lib/conversations', () => ({
 
 type QueryResponse = {
   data: Array<{
-    id: string;
+    application_id: string | null;
     status: string;
     created_at: string;
     listing_id: string | null;
@@ -44,12 +44,12 @@ type QueryResponse = {
     producer_id: string | null;
     script_id: string | null;
     script_metadata: Record<string, unknown> | null;
-    writer: { id: string; email: string } | null;
-    listing: { id: string; title: string; source: string | null } | null;
-    conversations: Array<{ id: string }>;
+    listing_title: string | null;
+    listing_source: string | null;
+    writer_email: string | null;
+    conversation_id: string | null;
   }>;
   error: null;
-  count: number;
 };
 
 describe('ProducerApplicationsPage', () => {
@@ -61,7 +61,7 @@ describe('ProducerApplicationsPage', () => {
     const response: QueryResponse = {
       data: [
         {
-          id: 'application-1',
+          application_id: 'application-1',
           status: 'pending',
           created_at: '2024-01-01T10:00:00Z',
           listing_id: 'listing-1',
@@ -76,25 +76,16 @@ describe('ProducerApplicationsPage', () => {
             length: 90,
             price_cents: 150000,
           },
-          writer: { id: 'writer-1', email: 'writer@example.com' },
-          listing: { id: 'listing-1', title: 'Test Listing', source: 'request' },
-          conversations: [],
+          listing_title: 'Test Listing',
+          listing_source: 'request',
+          writer_email: 'writer@example.com',
+          conversation_id: null,
         },
       ],
       error: null,
-      count: 1,
     };
 
-    const queryBuilder = {
-      or: jest.fn().mockReturnThis(),
-      order: jest.fn().mockReturnThis(),
-      range: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      then: (resolve: (value: QueryResponse) => void) =>
-        Promise.resolve(response).then(resolve),
-    };
-
-    const mockSelect = jest.fn().mockReturnValue(queryBuilder);
+    const mockRpc = jest.fn().mockResolvedValue(response);
 
     const mockSupabase = {
       auth: {
@@ -102,9 +93,7 @@ describe('ProducerApplicationsPage', () => {
           data: { user: { id: 'producer-1' } },
         }),
       },
-      from: jest.fn().mockReturnValue({
-        select: mockSelect,
-      }),
+      rpc: mockRpc,
     };
 
     mockGetSupabaseClient.mockReturnValue(mockSupabase);
@@ -120,7 +109,8 @@ describe('ProducerApplicationsPage', () => {
     expect(screen.getByText('Test Script')).toBeInTheDocument();
     expect(screen.getByText('Test Listing')).toBeInTheDocument();
     expect(mockSupabase.auth.getUser).toHaveBeenCalledTimes(1);
-    expect(mockSupabase.from).toHaveBeenCalledWith('applications');
-    expect(mockSelect).toHaveBeenCalled();
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('get_producer_applications', {
+      p_producer_id: 'producer-1',
+    });
   });
 });

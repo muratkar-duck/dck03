@@ -1,113 +1,73 @@
--- Ensure pgcrypto is available for UUID generation
-create extension if not exists pgcrypto;
+-- Ensure producers can fetch their applications via a reusable RPC
+set check_function_bodies = off;
 
--- Temporarily disable RLS during structure changes
-alter table if exists public.interests disable row level security;
-
--- Add surrogate primary key column if missing
-alter table if exists public.interests
-  add column if not exists id uuid;
-
--- Backfill ids for existing rows
-update public.interests
-set id = gen_random_uuid()
-where id is null;
-
--- Ensure id column has the correct default and constraint
-alter table if exists public.interests
-  alter column id set default gen_random_uuid();
-
-alter table if exists public.interests
-  alter column id set not null;
-
--- Drop the old primary key on (producer_id, script_id) if it exists
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'interests_pkey'
-      AND conrelid = 'public.interests'::regclass
-  ) THEN
-    ALTER TABLE public.interests
-      DROP CONSTRAINT interests_pkey;
-  END IF;
-END;
+create or replace function public.get_producer_applications(p_producer_id uuid)
+  returns table (
+    application_id uuid,
+    status text,
+    created_at timestamptz,
+    listing_id uuid,
+    producer_listing_id uuid,
+    request_id uuid,
+    owner_id uuid,
+    producer_id uuid,
+    script_id uuid,
+    script_metadata jsonb,
+    listing_title text,
+    listing_source text,
+    writer_email text,
+    conversation_id uuid
+  )
+  language sql
+  security definer
+  set search_path = public, auth
+as $$
+  select
+    a.id as application_id,
+    a.status,
+    a.created_at,
+    a.listing_id,
+    a.producer_listing_id,
+    a.request_id,
+    a.owner_id,
+    a.producer_id,
+    a.script_id,
+    a.script_metadata::jsonb,
+    l.title as listing_title,
+    l.source as listing_source,
+    w.email as writer_email,
+    c.id as conversation_id
+  from public.applications a
+  left join public.v_listings_unified l
+    on l.id = coalesce(a.listing_id, a.producer_listing_id, a.request_id)
+  left join auth.users w
+    on w.id = a.writer_id
+  left join public.conversations c
+    on c.application_id = a.id
+  where (
+    a.owner_id = p_producer_id
+    or a.producer_id = p_producer_id
+  )
+  order by a.created_at desc;
 $$;
 
--- Create the new primary key on id if missing
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'interests_pkey'
-      AND conrelid = 'public.interests'::regclass
-  ) THEN
-    ALTER TABLE public.interests
-      ADD CONSTRAINT interests_pkey PRIMARY KEY (id);
-  END IF;
-END;
-$$;
+alter function public.get_producer_applications(uuid) owner to postgres;
 
--- Ensure uniqueness on producer/script combination
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_constraint
-    WHERE conname = 'interests_producer_id_script_id_key'
-      AND conrelid = 'public.interests'::regclass
-  ) THEN
-    ALTER TABLE public.interests
-      ADD CONSTRAINT interests_producer_id_script_id_key
-        UNIQUE (producer_id, script_id);
-  END IF;
-END;
-$$;
+alter table public.applications enable row level security;
 
--- Helpful indexes for lookup paths
-create index if not exists idx_interests_producer_id on public.interests (producer_id);
-create index if not exists idx_interests_script_id on public.interests (script_id);
-
--- Re-enable RLS and recreate required policies
-alter table if exists public.interests enable row level security;
-
-drop policy if exists "Producers can view their interests" on public.interests;
-drop policy if exists "Producers can insert their interests" on public.interests;
-
-drop policy if exists "Producers can update their interests" on public.interests;
-
-create policy "Producers can view their interests"
-  on public.interests
+create policy if not exists "Producers can view their applications"
+  on public.applications
   for select
-  using (producer_id = auth.uid());
+  using (
+    auth.uid() = owner_id
+    or auth.uid() = producer_id
+  );
 
-create policy "Producers can insert their interests"
-  on public.interests
-  for insert
-  with check (producer_id = auth.uid());
+create policy if not exists "Writers can view their applications"
+  on public.applications
+  for select
+  using (
+    auth.uid() = writer_id
+    or auth.uid() = user_id
+  );
 
--- Replace RPC with new signature/behaviour
-DROP FUNCTION IF EXISTS public.rpc_mark_interest(uuid);
-
-CREATE OR REPLACE FUNCTION public.rpc_mark_interest(p_script_id uuid)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_producer_id uuid := auth.uid();
-BEGIN
-  IF v_producer_id IS NULL THEN
-    RAISE EXCEPTION 'Authentication required' USING ERRCODE = 'P0001';
-  END IF;
-
-  INSERT INTO public.interests (producer_id, script_id)
-  VALUES (v_producer_id, p_script_id)
-  ON CONFLICT (producer_id, script_id) DO NOTHING;
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION public.rpc_mark_interest(uuid) TO authenticated;
