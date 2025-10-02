@@ -25,31 +25,19 @@ export interface Script {
 
 export type ListingSource = 'producer_listing' | 'request';
 
-export type VListingUnified = {
+export type VListingUnifiedStatus = 'open' | 'closed' | 'draft' | string;
+
+export interface VListingUnified {
   id: string;
   owner_id: string | null;
   title: string;
   description: string | null;
-  genre: string;
-  budget_cents: number | null;
-  created_at: string;
-  deadline: string | null;
-  source: ListingSource;
-};
-
-export type VListingUnifiedStatus = 'producer_listing' | 'request';
-
-export interface VListingUnified {
-  id: string;
-  owner_id: string;
-  title: string;
   genre: string | null;
-  description: string | null;
   budget: number | null;
   created_at: string;
   deadline: string | null;
   status: VListingUnifiedStatus | null;
-  source: VListingUnifiedStatus | null;
+  source: ListingSource | null;
 }
 
 export interface ProducerListing {
@@ -58,7 +46,7 @@ export interface ProducerListing {
   title: string;
   description: string;
   genre: string;
-  budget_cents: number;
+  budget: number;
   created_at: string;
   deadline?: string | null;
 }

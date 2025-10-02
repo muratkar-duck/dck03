@@ -50,7 +50,7 @@ const baseListing = {
   title: 'Test Listing',
   description: 'Detaylı açıklama',
   genre: 'Drama',
-  budget_cents: 150000,
+  budget: 150000,
   created_at: '2024-01-01T00:00:00.000Z',
   source: null,
 };

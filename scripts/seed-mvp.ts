@@ -25,7 +25,7 @@ type ListingSeed = {
   title: string;
   genre: string;
   description: string;
-  budget_cents: number;
+  budget: number;
 };
 
 const SUPABASE_URL =
@@ -455,7 +455,7 @@ async function main() {
     genre: 'Dram',
     description:
       'Uluslararası festivallerde yarışabilecek, güçlü kadın karakterli bir uzun metraj projesi arıyoruz. Sahil kasabası atmosferi ve dönüşüm hikayesi tercih sebebidir.',
-    budget_cents: 750000,
+    budget: 750000,
   };
 
   const acceptedListing = await ensureListing(adminClient, producer.id, acceptedListingSeed);
@@ -500,7 +500,7 @@ async function main() {
     genre: 'Belgesel',
     description:
       'Anadolu’daki arkeolojik keşifler üzerine 45-60 dakikalık bir belgesel için ortak yazar arıyoruz. Hazır senaryo önerilerine açığız.',
-    budget_cents: 520000,
+    budget: 520000,
   };
 
   await ensureListing(adminClient, producer.id, openListingSeed);

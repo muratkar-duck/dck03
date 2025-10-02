@@ -182,7 +182,7 @@ export default function WriterMessagesPage() {
                   id,
                   title,
                   genre,
-                  budget_cents,
+                  budget,
                   owner_id,
                   source,
                   created_at
