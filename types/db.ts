@@ -23,6 +23,27 @@ export interface Script {
   created_at: string; // ISO
 }
 
+export interface Interest {
+  producer_id: string;
+  script_id: string;
+  created_at: string; // ISO
+}
+
+export interface NotificationQueue {
+  id: number;
+  recipient_id: string;
+  template: string;
+  payload: Record<string, unknown>;
+  status: 'pending' | 'processing' | 'sent' | 'failed' | string;
+  created_at: string; // ISO
+}
+
+export interface ProducerInterestNotificationPayload {
+  script_id: string;
+  script_title: string;
+  producer_id: string;
+}
+
 export type ListingSource = 'producer_listing' | 'request';
 
 export type VListingUnifiedStatus = 'open' | 'closed' | 'draft' | string;
