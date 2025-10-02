@@ -70,3 +70,4 @@ create policy if not exists "Writers can view their applications"
     auth.uid() = writer_id
     or auth.uid() = user_id
   );
+
