@@ -166,7 +166,7 @@ export default function ProducerMessagesPage() {
                   title,
                   owner_id,
                   genre,
-                  budget_cents,
+                  budget,
                   created_at,
                   source
                 ),

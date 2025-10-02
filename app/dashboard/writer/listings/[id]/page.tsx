@@ -24,9 +24,9 @@ const currency = new Intl.NumberFormat('tr-TR', {
   maximumFractionDigits: 2,
 });
 
-const budgetLabel = (budgetCents: number | null | undefined) => {
-  if (typeof budgetCents === 'number') {
-    return currency.format(budgetCents / 100);
+const budgetLabel = (budget: number | null | undefined) => {
+  if (typeof budget === 'number') {
+    return currency.format(budget);
   }
   return 'Belirtilmemiş';
 };
@@ -85,7 +85,7 @@ export default function ListingDetailPage() {
       const { data, error } = await supabase
         .from('v_listings_unified')
         .select(
-          'id, owner_id, title, genre, description, budget_cents, created_at, source'
+          'id, owner_id, title, genre, description, budget, created_at, source'
         )
         .eq('id', id)
         .maybeSingle();
@@ -406,7 +406,7 @@ export default function ListingDetailPage() {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold">🎬 {listing.title}</h1>
       <p className="text-sm text-[#7a5c36]">
-        Tür: {listing.genre} · Bütçe: {budgetLabel(listing.budget_cents)}
+        Tür: {listing.genre} · Bütçe: {budgetLabel(listing.budget)}
       </p>
       <div className="bg-white rounded-xl shadow p-6 border-l-4 border-[#f9c74f] space-y-4">
         <p className="text-[#4a3d2f]">

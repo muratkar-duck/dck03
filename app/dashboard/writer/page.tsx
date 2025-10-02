@@ -29,7 +29,7 @@ type ListingRow = {
   id: string;
   title: string;
   genre: string | null;
-  budget_cents: number | null;
+  budget: number | null;
   created_at: string | null;
   source: string | null;
 };
@@ -187,7 +187,7 @@ export default function WriterDashboardPage() {
         if (listingIds.length > 0) {
           const { data: listingsData, error: listingsError } = await supabase
             .from('v_listings_unified')
-            .select('id,title,genre,budget_cents,created_at,source')
+            .select('id,title,genre,budget,created_at,source')
             .in('id', listingIds);
 
           if (listingsError) {
