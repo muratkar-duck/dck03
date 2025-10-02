@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -16,8 +16,8 @@ type NavLink = {
 
 const publicLinks: NavLink[] = [
   { href: '/', label: 'Ana Sayfa' },
-  { href: '/about', label: 'Hakkımızda' },
-  { href: '/how-it-works', label: 'Nasıl Çalışır' },
+  { href: '/#about', label: 'Hakkımızda' },
+  { href: '/#how-it-works', label: 'Nasıl Çalışır' },
   { href: '/plans', label: 'Planlar' },
 ];
 
@@ -46,26 +46,65 @@ const createAppLinks = (role: Role | null | undefined): NavLink[] => [
 export default function AppHeader() {
   const { session } = useSession();
   const pathname = usePathname();
+  const [currentHash, setCurrentHash] = useState('');
   const role =
     (session?.user?.user_metadata?.role as Role | undefined) ??
     (session?.user?.app_metadata?.role as Role | undefined) ??
     null;
   const navigation = session ? createAppLinks(role) : publicLinks;
 
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const updateHash = () => {
+      setCurrentHash(window.location.hash);
+    };
+
+    updateHash();
+    window.addEventListener('hashchange', updateHash);
+
+    return () => {
+      window.removeEventListener('hashchange', updateHash);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    setCurrentHash(window.location.hash);
+  }, [pathname]);
+
   const isActiveLink = (href: string) => {
     if (!pathname) {
       return false;
     }
 
-    if (href === '/') {
+    const [targetPath, targetHash] = href.split('#');
+    const normalizedPath = targetPath || '/';
+
+    if (targetHash) {
+      if (pathname !== normalizedPath) {
+        return false;
+      }
+
+      return currentHash === `#${targetHash}`;
+    }
+
+    if (normalizedPath === '/') {
       return pathname === '/';
     }
 
-    if (href === '/browse') {
+    if (normalizedPath === '/browse') {
       return pathname === '/browse';
     }
 
-    return pathname === href || pathname.startsWith(`${href}/`);
+    return (
+      pathname === normalizedPath || pathname.startsWith(`${normalizedPath}/`)
+    );
   };
 
   const linkClassName = (href: string) => {
