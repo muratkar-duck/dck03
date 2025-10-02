@@ -52,18 +52,21 @@ export default function NewProducerListingPage() {
 
     const numericBudget = Number(budget);
 
-    if (!Number.isFinite(numericBudget)) {
+    if (!Number.isFinite(numericBudget) || numericBudget < 0) {
       alert('Lütfen geçerli bir bütçe değeri girin.');
       setSubmitting(false);
       return;
     }
 
-    const budgetCents = Math.round(numericBudget * 100);
-
     let deadlineValue: string | null = null;
 
     if (deadline) {
-      const parsedDeadline = new Date(`${deadline}T23:59:59`);
+      const [yearStr, monthStr, dayStr] = deadline.split('-');
+      const parsedDeadline = new Date(
+        Number(yearStr),
+        Number(monthStr) - 1,
+        Number(dayStr)
+      );
 
       if (Number.isNaN(parsedDeadline.getTime())) {
         alert('Lütfen geçerli bir son teslim tarihi girin.');
@@ -72,6 +75,8 @@ export default function NewProducerListingPage() {
       }
 
       const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      parsedDeadline.setHours(0, 0, 0, 0);
 
       if (parsedDeadline.getTime() < now.getTime()) {
         alert('Son teslim tarihi geçmiş olamaz.');
@@ -88,8 +93,7 @@ export default function NewProducerListingPage() {
         title,
         description,
         genre,
-        budget_cents: budgetCents,
-        created_at: new Date().toISOString(),
+        budget: numericBudget,
         deadline: deadlineValue,
       },
     ]);

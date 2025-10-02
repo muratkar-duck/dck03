@@ -37,6 +37,21 @@ export type VListingUnified = {
   source: ListingSource;
 };
 
+export type VListingUnifiedStatus = 'producer_listing' | 'request';
+
+export interface VListingUnified {
+  id: string;
+  owner_id: string;
+  title: string;
+  genre: string | null;
+  description: string | null;
+  budget: number | null;
+  created_at: string;
+  deadline: string | null;
+  status: VListingUnifiedStatus | null;
+  source: VListingUnifiedStatus | null;
+}
+
 export interface ProducerListing {
   id: string;
   owner_id: string;

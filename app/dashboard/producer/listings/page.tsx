@@ -16,9 +16,9 @@ const dateFormatter = new Intl.DateTimeFormat('tr-TR', {
   dateStyle: 'medium',
 });
 
-const budgetLabel = (budgetCents: number | null | undefined) => {
-  if (typeof budgetCents === 'number') {
-    return currencyFormatter.format(budgetCents / 100);
+const budgetLabel = (budget: number | null | undefined) => {
+  if (typeof budget === 'number') {
+    return currencyFormatter.format(budget);
   }
   return 'Belirtilmemiş';
 };
@@ -27,18 +27,21 @@ const formatDeadline = (deadline: string | null | undefined) => {
   if (!deadline) {
     return '—';
   }
+  return deadline.slice(0, 10);
+};
 
-  const normalized = deadline.includes('T')
-    ? deadline
-    : `${deadline}T00:00:00`;
+const getListingBadge = (listing: VListingUnified) => {
+  const listingType = listing.status ?? listing.source;
 
-  const parsed = new Date(normalized);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return '—';
+  if (listingType === 'request') {
+    return 'Talep';
   }
 
-  return dateFormatter.format(parsed);
+  if (listingType === 'producer_listing') {
+    return 'Yapımcı İlanı';
+  }
+
+  return null;
 };
 
 export default function ProducerListingsPage() {
@@ -80,7 +83,7 @@ export default function ProducerListingsPage() {
       const { data, error: listingsError } = await supabase
         .from('v_listings_unified')
         .select(
-          'id, owner_id, title, genre, description, budget_cents, created_at, deadline, source'
+          'id,owner_id,title,genre,description,budget,created_at,deadline,status,source'
         )
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false });
@@ -145,7 +148,7 @@ export default function ProducerListingsPage() {
                       {listing.title}
                     </h2>
                     <span className="text-sm font-medium text-[#ffaa06]">
-                      {budgetLabel(listing.budget_cents)}
+                      {budgetLabel(listing.budget)}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-4 text-sm text-[#7a5c36]">
@@ -155,8 +158,9 @@ export default function ProducerListingsPage() {
                     </span>
                     <span>Son teslim: {formatDeadline(listing.deadline)}</span>
                     {listing.source === 'request' ? (
+
                       <span className="text-xs uppercase tracking-wide text-[#a38d6d]">
-                        Eski Talep
+                        {getListingBadge(listing)}
                       </span>
                     ) : null}
                   </div>
