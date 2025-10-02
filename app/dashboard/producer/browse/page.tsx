@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
@@ -63,6 +63,7 @@ export default function BrowseScriptsPage() {
   const [pendingInterestId, setPendingInterestId] = useState<string | null>(
     null
   );
+  const interestedScriptIdsRef = useRef<Set<string>>(new Set());
 
   const updateFilter = useCallback((key: keyof FilterState, value: string) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -298,15 +299,25 @@ export default function BrowseScriptsPage() {
           return;
         }
 
+        const alreadyInterested = interestedScriptIdsRef.current.has(script.id);
+
         const { error: markInterestError } = await supabase.rpc(
           'rpc_mark_interest',
           {
-            script_id: script.id,
+            p_script_id: script.id,
           }
         );
 
         if (markInterestError) {
           throw markInterestError;
+        }
+
+        if (alreadyInterested) {
+          showToast(
+            'success',
+            `${script.title} senaryosuna olan ilginiz zaten kayıtlı.`
+          );
+          return;
         }
 
         const notified = await notifyWriterOfInterest({
@@ -323,6 +334,7 @@ export default function BrowseScriptsPage() {
           return;
         }
 
+        interestedScriptIdsRef.current.add(script.id);
         showToast(
           'success',
           `${script.title} senaryosuna ilgi gösterdiniz. Senarist bilgilendirildi.`

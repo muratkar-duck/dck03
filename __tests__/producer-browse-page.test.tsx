@@ -93,7 +93,7 @@ describe('BrowseScriptsPage interest handling', () => {
       (fnName: string, params: Record<string, unknown>) => {
         if (fnName === 'rpc_mark_interest') {
           return Promise.resolve({
-            data: { ...baseScript, producer_id: 'producer-1' },
+            data: null,
             error: null,
           });
         }
@@ -125,7 +125,7 @@ describe('BrowseScriptsPage interest handling', () => {
     );
 
     expect(supabase.rpc).toHaveBeenCalledWith('rpc_mark_interest', {
-      script_id: baseScript.id,
+      p_script_id: baseScript.id,
     });
     expect(supabase.rpc).toHaveBeenCalledWith('enqueue_notification', {
       recipient_id: baseScript.owner_id,
@@ -164,7 +164,7 @@ describe('BrowseScriptsPage interest handling', () => {
     );
 
     expect(supabase.rpc).toHaveBeenCalledWith('rpc_mark_interest', {
-      script_id: baseScript.id,
+      p_script_id: baseScript.id,
     });
   });
 
@@ -174,7 +174,7 @@ describe('BrowseScriptsPage interest handling', () => {
     (supabase.rpc as jest.Mock).mockImplementation((fnName: string) => {
       if (fnName === 'rpc_mark_interest') {
         return Promise.resolve({
-          data: { ...baseScript, producer_id: 'producer-1' },
+          data: null,
           error: null,
         });
       }
@@ -213,5 +213,81 @@ describe('BrowseScriptsPage interest handling', () => {
         producer_id: 'producer-1',
       },
     });
+  });
+
+  it('shows idempotent success toast on repeated interest attempts without re-notifying', async () => {
+    const supabase = createSupabaseMock();
+
+    (supabase.rpc as jest.Mock).mockImplementation(
+      (fnName: string, params: Record<string, unknown>) => {
+        if (fnName === 'rpc_mark_interest') {
+          return Promise.resolve({ data: null, error: null });
+        }
+
+        if (fnName === 'enqueue_notification') {
+          return Promise.resolve({ data: null, error: null });
+        }
+
+        throw new Error(`Unexpected RPC call ${fnName} with ${JSON.stringify(params)}`);
+      }
+    );
+
+    getSupabaseClient.mockReturnValue(supabase);
+
+    render(<BrowseScriptsPage />);
+
+    const button = await screen.findByRole('button', { name: 'İlgi Göster' });
+
+    await userEvent.click(button);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          `${baseScript.title} senaryosuna ilgi gösterdiniz. Senarist bilgilendirildi.`
+        )
+      ).toBeInTheDocument()
+    );
+
+    expect(supabase.rpc).toHaveBeenCalledWith('rpc_mark_interest', {
+      p_script_id: baseScript.id,
+    });
+    expect(supabase.rpc).toHaveBeenCalledWith('enqueue_notification', {
+      recipient_id: baseScript.owner_id,
+      template: 'producer_interest_registered',
+      payload: {
+        script_id: baseScript.id,
+        script_title: baseScript.title,
+        producer_id: 'producer-1',
+      },
+    });
+
+    (supabase.rpc as jest.Mock).mockClear();
+
+    (supabase.rpc as jest.Mock).mockImplementation((fnName: string) => {
+      if (fnName === 'rpc_mark_interest') {
+        return Promise.resolve({ data: null, error: null });
+      }
+
+      if (fnName === 'enqueue_notification') {
+        return Promise.resolve({ data: null, error: null });
+      }
+
+      return Promise.resolve({ data: null, error: null });
+    });
+
+    await userEvent.click(button);
+
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          `${baseScript.title} senaryosuna olan ilginiz zaten kayıtlı.`
+        )
+      ).toBeInTheDocument()
+    );
+
+    expect(supabase.rpc).toHaveBeenCalledWith('rpc_mark_interest', {
+      p_script_id: baseScript.id,
+    });
+    expect(supabase.rpc).not.toHaveBeenCalledWith('enqueue_notification', expect.anything());
   });
 });
