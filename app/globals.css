@@ -9,6 +9,10 @@ body {
   height: 100%;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   @apply bg-[#faf3e0] text-[#7a5c36] font-sans;
   line-height: 1.6;

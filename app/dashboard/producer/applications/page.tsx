@@ -21,8 +21,6 @@ type ApplicationRow = {
   conversation_id: string | null;
 };
 
-type MaybeArray<T> = T | T[] | null | undefined;
-
 type ScriptMetadata = {
   id?: unknown;
   title?: unknown;
@@ -31,10 +29,10 @@ type ScriptMetadata = {
   writer_email?: unknown;
 } | null;
 
-type SupabaseApplicationRow = {
-  id: string;
-  status: string;
-  created_at: string;
+type RpcApplicationRow = {
+  application_id: string | null;
+  status: string | null;
+  created_at: string | null;
   listing_id: string | null;
   producer_listing_id: string | null;
   request_id: string | null;
@@ -42,9 +40,10 @@ type SupabaseApplicationRow = {
   producer_id: string | null;
   script_id: string | null;
   script_metadata: ScriptMetadata;
-  writer: MaybeArray<{ id: string; email: string | null }>;
-  listing: MaybeArray<{ id: string; title: string | null; source: string | null }>;
-  conversations: MaybeArray<{ id: string }>;
+  listing_title: string | null;
+  listing_source: string | null;
+  writer_email: string | null;
+  conversation_id: string | null;
 };
 
 type IdFilter = 'all' | 'listing' | 'producer_listing' | 'request';
@@ -59,10 +58,9 @@ const PAGE_SIZE = 10;
 
 export default function ProducerApplicationsPage() {
   const router = useRouter();
-  const [applications, setApplications] = useState<ApplicationRow[]>([]);
+  const [rawApplications, setRawApplications] = useState<RpcApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
   const [idFilterType, setIdFilterType] = useState<IdFilter>('all');
   const [idFilterValue, setIdFilterValue] = useState('');
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -77,9 +75,8 @@ export default function ProducerApplicationsPage() {
     setFetchError(null);
 
     if (!supabase) {
-      setApplications([]);
-      setTotalCount(0);
       setFetchError('Supabase istemcisi kullanılamıyor.');
+      setRawApplications([]);
       setLoading(false);
       return;
     }
@@ -89,8 +86,7 @@ export default function ProducerApplicationsPage() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setApplications([]);
-      setTotalCount(0);
+      setRawApplications([]);
       setFetchError('Oturum doğrulanamadı. Lütfen tekrar giriş yapın.');
       setLoading(false);
       return;
@@ -142,116 +138,144 @@ export default function ProducerApplicationsPage() {
       count: number | null;
     };
 
+
     if (error) {
       console.error('Başvurular alınamadı:', error.message);
-      setApplications([]);
-      setTotalCount(0);
-      setFetchError('Başvurular yüklenemedi. Lütfen daha sonra tekrar deneyin.');
+      setRawApplications([]);
+      setFetchError(`Supabase hatası: ${error.message}`);
     } else {
-      const takeFirst = <T,>(value: MaybeArray<T>): T | null => {
-        if (Array.isArray(value)) {
-          return value[0] ?? null;
-        }
-
-        return value ?? null;
-      };
-
-      const formatted = (data ?? []).map((item) => {
-        const listing = takeFirst(item.listing);
-        const writer = takeFirst(item.writer);
-        const conversation = takeFirst(item.conversations);
-
-        const scriptMetadata =
-          item.script_metadata && typeof item.script_metadata === 'object'
-            ? (item.script_metadata as ScriptMetadata)
-            : null;
-
-        const rawLength = scriptMetadata?.length ?? null;
-        const normalizedLength =
-          typeof rawLength === 'number'
-            ? rawLength
-            : rawLength != null && !Number.isNaN(Number(rawLength))
-            ? Number(rawLength)
-            : null;
-
-        const rawPrice = scriptMetadata?.price_cents ?? null;
-        const normalizedPrice =
-          typeof rawPrice === 'number'
-            ? rawPrice
-            : rawPrice != null && !Number.isNaN(Number(rawPrice))
-            ? Number(rawPrice)
-            : null;
-
-        const rawListingId =
-          item.listing_id ??
-          item.producer_listing_id ??
-          item.request_id ??
-          listing?.id ??
-          null;
-        const resolvedListingId =
-          rawListingId != null ? String(rawListingId) : '';
-
-        const rawScriptId = item.script_id ?? scriptMetadata?.id ?? null;
-        const resolvedScriptId =
-          rawScriptId != null ? String(rawScriptId) : '';
-
-        const scriptTitle =
-          scriptMetadata?.title != null
-            ? String(scriptMetadata.title)
-            : '';
-
-        const listingTitle =
-          listing?.title != null ? String(listing.title) : '';
-
-        const applicationId =
-          item.id != null ? String(item.id) : '';
-
-        const status = item.status != null ? String(item.status) : '';
-
-        const writerEmail =
-          writer?.email != null
-            ? String(writer.email)
-            : scriptMetadata?.writer_email != null
-            ? String(scriptMetadata.writer_email)
-            : null;
-
-        return {
-          application_id: applicationId,
-          status,
-          created_at: item.created_at,
-          listing_id: resolvedListingId,
-          listing_title: listingTitle,
-          listing_source:
-            listing?.source != null ? String(listing.source) : null,
-          script_id: resolvedScriptId,
-          script_title: scriptTitle,
-          writer_email: writerEmail,
-          length: normalizedLength,
-          price_cents: normalizedPrice,
-          conversation_id: conversation?.id ?? null,
-        } as ApplicationRow;
-      });
-      setApplications(formatted);
-      const resolvedCount = count ?? 0;
-      setTotalCount(resolvedCount);
-
-      if (typeof count === 'number') {
-        const newTotalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
-        if (currentPage > newTotalPages) {
-          setCurrentPage(newTotalPages);
-          setLoading(false);
-          return;
-        }
-      }
+      const rows = Array.isArray(data) ? (data as RpcApplicationRow[]) : [];
+      setRawApplications(rows);
       setFetchError(null);
     }
 
     setLoading(false);
-  }, [currentPage, idFilterType, idFilterValue, supabase]);
+  }, [supabase]);
 
   useEffect(() => {
     fetchApplications();
   }, [fetchApplications]);
+
+  const trimmedFilterValue = idFilterValue.trim();
+
+  const filteredApplications = useMemo(() => {
+    if (!trimmedFilterValue) {
+      return rawApplications;
+    }
+
+    const matchesValue = (value: string | null | undefined) =>
+      value != null && String(value).trim() === trimmedFilterValue;
+
+    return rawApplications.filter((item) => {
+      if (idFilterType === 'all') {
+        return (
+          matchesValue(item.listing_id) ||
+          matchesValue(item.producer_listing_id) ||
+          matchesValue(item.request_id)
+        );
+      }
+
+      if (idFilterType === 'listing') {
+        return matchesValue(item.listing_id);
+      }
+
+      if (idFilterType === 'producer_listing') {
+        return matchesValue(item.producer_listing_id);
+      }
+
+      if (idFilterType === 'request') {
+        return matchesValue(item.request_id);
+      }
+
+      return true;
+    });
+  }, [rawApplications, idFilterType, trimmedFilterValue]);
+
+  const totalCount = filteredApplications.length;
+
+  useEffect(() => {
+    if (loading) {
+      return;
+    }
+
+    const newTotalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+    if (currentPage > newTotalPages) {
+      setCurrentPage(newTotalPages);
+    }
+  }, [currentPage, loading, totalCount]);
+
+  const paginatedApplications = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const end = start + PAGE_SIZE;
+    return filteredApplications.slice(start, end);
+  }, [currentPage, filteredApplications]);
+
+  const applications: ApplicationRow[] = useMemo(() => {
+    return paginatedApplications.map((item) => {
+      const scriptMetadata =
+        item.script_metadata && typeof item.script_metadata === 'object'
+          ? (item.script_metadata as ScriptMetadata)
+          : null;
+
+      const rawLength = scriptMetadata?.length ?? null;
+      const normalizedLength =
+        typeof rawLength === 'number'
+          ? rawLength
+          : rawLength != null && !Number.isNaN(Number(rawLength))
+          ? Number(rawLength)
+          : null;
+
+      const rawPrice = scriptMetadata?.price_cents ?? null;
+      const normalizedPrice =
+        typeof rawPrice === 'number'
+          ? rawPrice
+          : rawPrice != null && !Number.isNaN(Number(rawPrice))
+          ? Number(rawPrice)
+          : null;
+
+      const rawListingId =
+        item.listing_id ?? item.producer_listing_id ?? item.request_id ?? null;
+      const resolvedListingId = rawListingId != null ? String(rawListingId) : '';
+
+      const rawScriptId = item.script_id ?? scriptMetadata?.id ?? null;
+      const resolvedScriptId = rawScriptId != null ? String(rawScriptId) : '';
+
+      const scriptTitle =
+        scriptMetadata?.title != null ? String(scriptMetadata.title) : '';
+
+      const listingTitle =
+        item.listing_title != null ? String(item.listing_title) : '';
+
+      const applicationId =
+        item.application_id != null ? String(item.application_id) : '';
+
+      const status = item.status != null ? String(item.status) : '';
+
+      const writerEmail =
+        item.writer_email != null
+          ? String(item.writer_email)
+          : scriptMetadata?.writer_email != null
+          ? String(scriptMetadata.writer_email)
+          : null;
+
+      return {
+        application_id: applicationId,
+        status,
+        created_at: item.created_at ?? new Date().toISOString(),
+        listing_id: resolvedListingId,
+        listing_title: listingTitle,
+        listing_source:
+          item.listing_source != null ? String(item.listing_source) : null,
+        script_id: resolvedScriptId,
+        script_title: scriptTitle,
+        writer_email: writerEmail,
+        length: normalizedLength,
+        price_cents: normalizedPrice,
+        conversation_id:
+          item.conversation_id != null ? String(item.conversation_id) : null,
+      } as ApplicationRow;
+    });
+  }, [paginatedApplications]);
 
   const resetToFirstPage = () => {
     setCurrentPage(1);
@@ -298,6 +322,7 @@ export default function ProducerApplicationsPage() {
     const updatedStatus =
       (updatedApplication as { status?: string } | null)?.status ?? decision;
 
+
     setApplications((prev) =>
       prev.map((application) =>
         application.application_id === applicationId
@@ -326,6 +351,7 @@ export default function ProducerApplicationsPage() {
     }
 
     setDecisionLoadingId(null);
+
 
     const successMessageMap: Record<Decision, string> = {
       accepted: '✅ Başvuru kabul edildi',

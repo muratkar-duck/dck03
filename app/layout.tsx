@@ -2,6 +2,7 @@ import './globals.css';
 import TabTitleHandler from '../components/TabTitleHandler';
 
 import AppHeader from '@/components/AppHeader';
+import BackToTop from '@/components/BackToTop';
 
 export const metadata = {
   title: 'ducktylo | Senaristler ve Yapımcılar için ortak nokta!',
@@ -21,6 +22,8 @@ export default function RootLayout({
         <AppHeader />
 
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-10">{children}</main>
+
+        <BackToTop />
 
         <footer
           className="w-full bg-forest text-brand py-4"
