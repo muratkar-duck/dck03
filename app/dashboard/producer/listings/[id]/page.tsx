@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
-import { ensureConversationWithParticipants } from '@/lib/conversations';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import type { VListingUnified } from '@/types/db';
 
@@ -23,6 +22,11 @@ type ApplicationRow = {
     id: string;
     email: string | null;
   } | null;
+};
+
+type DecisionFeedback = {
+  type: 'success' | 'warning' | 'error';
+  message: string;
 };
 
 const currencyFormatter = new Intl.NumberFormat('tr-TR', {
@@ -59,6 +63,9 @@ export default function ProducerListingDetailPage() {
   );
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [decisionFeedback, setDecisionFeedback] = useState<DecisionFeedback | null>(
+    null
+  );
   const supabase = useMemo(getSupabaseClient, []);
 
   useEffect(() => {
@@ -206,6 +213,7 @@ export default function ProducerListingDetailPage() {
     decision: 'accepted' | 'rejected'
   ) => {
     setUpdatingId(applicationId);
+    setDecisionFeedback(null);
 
     if (!supabase) {
       alert('Supabase istemcisi kullanılamıyor.');
@@ -213,72 +221,67 @@ export default function ProducerListingDetailPage() {
       return;
     }
 
-    const { error: updateError } = await supabase
-      .from('applications')
-      .update({ status: decision })
-      .eq('id', applicationId);
+    const { data: updatedApplication, error: updateError } = await supabase.rpc(
+      'mark_application_status',
+      {
+        p_application_id: applicationId,
+        p_status: decision,
+      }
+    );
 
     if (updateError) {
       console.error(updateError);
-      alert('❌ Güncelleme hatası: ' + updateError.message);
+      const message = `❌ Başvuru durumu güncellenemedi: ${updateError.message}`;
+      setDecisionFeedback({ type: 'error', message });
+      alert(message);
       setUpdatingId(null);
       return;
     }
 
-    let conversationError: string | null = null;
     let conversationId: string | null = null;
-
-    let actingUserId = currentUserId;
-
-    if (decision === 'accepted') {
-      if (!actingUserId) {
-        const {
-          data: { user: freshUser },
-          error: authError,
-        } = await supabase.auth.getUser();
-
-        if (authError) {
-          alert('❌ Oturum doğrulanamadı: ' + authError.message);
-          setUpdatingId(null);
-          return;
-        }
-
-        if (!freshUser) {
-          alert('❌ Oturum doğrulanamadı. Lütfen tekrar giriş yapın.');
-          setUpdatingId(null);
-          return;
-        }
-
-        actingUserId = freshUser.id;
-        setCurrentUserId(freshUser.id);
-      }
-    }
-
-    if (decision === 'accepted' && actingUserId) {
-      const { conversationId: ensuredConversationId, error } =
-        await ensureConversationWithParticipants(
-          supabase,
-          applicationId,
-          actingUserId
-        );
-      conversationError = error;
-      conversationId = ensuredConversationId;
-    }
+    const updatedStatus =
+      (updatedApplication as { status?: string } | null)?.status ?? decision;
 
     setApplications((prev) =>
       prev.map((app) =>
-        app.id === applicationId ? { ...app, status: decision } : app
+        app.id === applicationId ? { ...app, status: updatedStatus } : app
       )
     );
+
+    let conversationError: string | null = null;
+
+    if (decision === 'accepted') {
+      const { data: ensuredConversationId, error: ensureError } =
+        await supabase.rpc('ensure_conversation_for_application', {
+          p_application_id: applicationId,
+        });
+
+      if (ensureError) {
+        console.error(ensureError);
+        conversationError = ensureError.message;
+      } else if (!ensuredConversationId) {
+        conversationError = 'Sohbet oluşturulamadı.';
+      } else {
+        conversationId = String(ensuredConversationId);
+      }
+    }
 
     setUpdatingId(null);
 
     if (conversationError) {
-      alert(
-        `⚠️ Başvuru kabul edildi ancak sohbet açılamadı: ${conversationError}`
-      );
+      const message = `⚠️ Başvuru kabul edildi ancak sohbet açılamadı: ${conversationError}`;
+      setDecisionFeedback({ type: 'warning', message });
+      alert(message);
     } else {
-      alert(`✅ Başvuru ${decision === 'accepted' ? 'kabul edildi' : 'reddedildi'}`);
+      const message =
+        decision === 'accepted'
+          ? '✅ Başvuru kabul edildi'
+          : '❌ Başvuru reddedildi';
+      setDecisionFeedback({
+        type: decision === 'accepted' ? 'success' : 'warning',
+        message,
+      });
+      alert(message);
     }
 
     if (decision === 'accepted' && conversationId) {
@@ -301,6 +304,8 @@ export default function ProducerListingDetailPage() {
       alert('Supabase istemcisi kullanılamıyor.');
       return;
     }
+
+    setDecisionFeedback(null);
 
     let buyerId = currentUserId;
 
@@ -339,27 +344,43 @@ export default function ProducerListingDetailPage() {
       return;
     }
 
-    const { error: updateError } = await supabase
-      .from('applications')
-      .update({ status: 'purchased' })
-      .eq('id', application.id);
+    const { data: updatedApplication, error: updateError } = await supabase.rpc(
+      'mark_application_status',
+      {
+        p_application_id: application.id,
+        p_status: 'purchased',
+      }
+    );
 
     if (updateError) {
       console.error(updateError);
-      alert('⚠️ Satın alma kaydedildi ancak başvuru güncellenemedi: ' + updateError.message);
+      const message =
+        '⚠️ Satın alma kaydedildi ancak başvuru güncellenemedi: ' +
+        updateError.message;
+      setDecisionFeedback({ type: 'warning', message });
+      alert(message);
       setPurchasingId(null);
       return;
     }
 
     setApplications((prev) =>
       prev.map((app) =>
-        app.id === application.id ? { ...app, status: 'purchased' } : app
+        app.id === application.id
+          ? {
+              ...app,
+              status:
+                (updatedApplication as { status?: string } | null)?.status ??
+                'purchased',
+            }
+          : app
       )
     );
 
     setPurchasingId(null);
     setPurchaseTarget(null);
-    alert('🧾 Satın alma işlemi başarıyla tamamlandı.');
+    const message = '🧾 Satın alma işlemi başarıyla tamamlandı.';
+    setDecisionFeedback({ type: 'success', message });
+    alert(message);
   };
 
   const getStatusBadge = (status: string) => {
@@ -416,6 +437,19 @@ export default function ProducerListingDetailPage() {
             {error && (
               <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
                 {error}
+              </div>
+            )}
+            {decisionFeedback && (
+              <div
+                className={`rounded-lg border p-4 text-sm ${
+                  decisionFeedback.type === 'success'
+                    ? 'border-green-200 bg-green-50 text-green-800'
+                    : decisionFeedback.type === 'warning'
+                    ? 'border-yellow-200 bg-yellow-50 text-yellow-800'
+                    : 'border-red-200 bg-red-50 text-red-700'
+                }`}
+              >
+                {decisionFeedback.message}
               </div>
             )}
 

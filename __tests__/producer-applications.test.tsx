@@ -28,10 +28,6 @@ jest.mock('@/lib/supabaseClient', () => ({
   getSupabaseClient: mockGetSupabaseClient,
 }));
 
-jest.mock('@/lib/conversations', () => ({
-  ensureConversationWithParticipants: jest.fn(),
-}));
-
 type QueryResponse = {
   data: Array<{
     id: string;
