@@ -20,12 +20,6 @@ jest.mock('@/lib/supabaseClient', () => ({
   getSupabaseClient: jest.fn(),
 }));
 
-jest.mock('@/lib/conversations', () => ({
-  ensureConversationWithParticipants: jest
-    .fn()
-    .mockResolvedValue({ conversationId: null, error: null }),
-}));
-
 const mockUseParams = useParams as jest.MockedFunction<typeof useParams>;
 const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>;
 const mockGetSupabaseClient = getSupabaseClient as jest.MockedFunction<
@@ -76,8 +70,7 @@ const acceptedApplication = {
 function createSupabaseStub(): {
   client: any;
   orderInsertMock: jest.Mock;
-  applicationUpdateMock: jest.Mock;
-  applicationUpdateEqMock: jest.Mock;
+  rpcMock: jest.Mock;
 } {
   const listingMaybeSingleMock = jest.fn().mockResolvedValue({
     data: baseListing,
@@ -109,15 +102,22 @@ function createSupabaseStub(): {
     eq: applicationsEqMock,
   });
 
-  const applicationUpdateEqMock = jest
-    .fn()
-    .mockResolvedValue({ error: null });
-
-  const applicationUpdateMock = jest.fn().mockReturnValue({
-    eq: applicationUpdateEqMock,
-  });
-
   const orderInsertMock = jest.fn().mockResolvedValue({ error: null });
+
+  const rpcMock = jest.fn((fn: string, params: Record<string, unknown>) => {
+    if (fn === 'mark_application_status') {
+      return Promise.resolve({
+        data: { status: params.p_status },
+        error: null,
+      });
+    }
+
+    if (fn === 'ensure_conversation_for_application') {
+      return Promise.resolve({ data: 'conversation-123', error: null });
+    }
+
+    return Promise.resolve({ data: null, error: null });
+  });
 
   const fromMock = jest.fn((table: string) => {
     if (table === 'v_listings_unified') {
@@ -129,7 +129,6 @@ function createSupabaseStub(): {
     if (table === 'applications') {
       return {
         select: applicationsSelectMock,
-        update: applicationUpdateMock,
       };
     }
 
@@ -150,19 +149,19 @@ function createSupabaseStub(): {
       }),
     },
     from: fromMock,
+    rpc: rpcMock,
   };
 
   return {
     client,
     orderInsertMock,
-    applicationUpdateMock,
-    applicationUpdateEqMock,
+    rpcMock,
   };
 }
 
 describe('Producer listing detail purchase flow', () => {
   it('transitions an accepted application to purchased after confirming purchase', async () => {
-    const { client, orderInsertMock, applicationUpdateMock, applicationUpdateEqMock } =
+    const { client, orderInsertMock, rpcMock } =
       createSupabaseStub();
 
     mockUseParams.mockReturnValue({ id: 'listing-1' });
@@ -193,8 +192,13 @@ describe('Producer listing detail purchase flow', () => {
       amount_cents: 55000,
     });
 
-    expect(applicationUpdateMock).toHaveBeenCalledWith({ status: 'purchased' });
-    expect(applicationUpdateEqMock).toHaveBeenCalledWith('id', 'application-1');
+    expect(rpcMock).toHaveBeenCalledWith(
+      'mark_application_status',
+      expect.objectContaining({
+        p_application_id: 'application-1',
+        p_status: 'purchased',
+      })
+    );
   });
 });
 

@@ -8,13 +8,12 @@ type ConversationResult = {
 export const ensureConversationWithParticipants = async (
   client: SupabaseClient,
   applicationId: string,
-  actingUserId?: string | null
+  _actingUserId?: string | null
 ): Promise<ConversationResult> => {
   const { data, error } = await client.rpc(
-    'ensure_conversation_with_participants',
+    'ensure_conversation_for_application',
     {
-      application_id: applicationId,
-      acting_user_id: actingUserId ?? null,
+      p_application_id: applicationId,
     }
   );
 

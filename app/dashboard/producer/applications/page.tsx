@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
-import { ensureConversationWithParticipants } from '@/lib/conversations';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 
 type ApplicationRow = {
@@ -50,17 +49,25 @@ type RpcApplicationRow = {
 type IdFilter = 'all' | 'listing' | 'producer_listing' | 'request';
 type Decision = 'accepted' | 'rejected' | 'on_hold' | 'purchased';
 
+type DecisionFeedback = {
+  type: 'success' | 'warning' | 'error';
+  message: string;
+};
+
 const PAGE_SIZE = 10;
 
 export default function ProducerApplicationsPage() {
   const router = useRouter();
   const [rawApplications, setRawApplications] = useState<RpcApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [idFilterType, setIdFilterType] = useState<IdFilter>('all');
   const [idFilterValue, setIdFilterValue] = useState('');
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [decisionLoadingId, setDecisionLoadingId] = useState<string | null>(null);
+  const [decisionFeedback, setDecisionFeedback] = useState<DecisionFeedback | null>(
+    null
+  );
   const supabase = useMemo(getSupabaseClient, []);
 
   const fetchApplications = useCallback(async () => {
@@ -85,11 +92,52 @@ export default function ProducerApplicationsPage() {
       return;
     }
 
-    setCurrentUserId(user.id);
+    const rangeStart = (currentPage - 1) * PAGE_SIZE;
+    const rangeEnd = rangeStart + PAGE_SIZE - 1;
 
-    const { data, error } = await supabase.rpc('get_producer_applications', {
-      p_producer_id: user.id,
-    });
+    const trimmedFilterValue = idFilterValue.trim();
+
+    let query = supabase
+      .from('applications')
+      .select(`
+        id,
+        status,
+        created_at,
+        listing_id,
+        producer_listing_id,
+        request_id,
+        owner_id,
+        producer_id,
+        script_id,
+        script_metadata,
+        listing:v_listings_unified!inner(id, title, owner_id, source),
+        writer:users!applications_writer_id_fkey(id, email),
+        conversations(id)
+      `, { count: 'exact' })
+      .or(`owner_id.eq.${user.id},producer_id.eq.${user.id}`)
+      .order('created_at', { ascending: false })
+      .range(rangeStart, rangeEnd);
+
+    if (trimmedFilterValue.length > 0) {
+      if (idFilterType === 'all') {
+        query = query.or(
+          `listing_id.eq.${trimmedFilterValue},producer_listing_id.eq.${trimmedFilterValue},request_id.eq.${trimmedFilterValue}`
+        );
+      } else if (idFilterType === 'listing') {
+        query = query.eq('listing_id', trimmedFilterValue);
+      } else if (idFilterType === 'producer_listing') {
+        query = query.eq('producer_listing_id', trimmedFilterValue);
+      } else if (idFilterType === 'request') {
+        query = query.eq('request_id', trimmedFilterValue);
+      }
+    }
+
+    const { data, error, count } = (await query) as {
+      data: SupabaseApplicationRow[] | null;
+      error: { message: string } | null;
+      count: number | null;
+    };
+
 
     if (error) {
       console.error('Başvurular alınamadı:', error.message);
@@ -246,67 +294,64 @@ export default function ProducerApplicationsPage() {
 
   const handleDecision = async (applicationId: string, decision: Decision) => {
     if (!supabase) {
-      alert('Supabase istemcisi kullanılamıyor.');
+      const message = 'Supabase istemcisi kullanılamıyor.';
+      setDecisionFeedback({ type: 'error', message });
+      alert(message);
       return;
     }
 
-    let conversationError: string | null = null;
+    setDecisionLoadingId(applicationId);
+    setDecisionFeedback(null);
 
-    let conversationId: string | null = null;
-
-    let actingUserId = currentUserId;
-
-    if (decision === 'accepted') {
-      if (!actingUserId) {
-        const {
-          data: { user: freshUser },
-          error: authError,
-        } = await supabase.auth.getUser();
-
-        if (authError) {
-          alert('❌ Oturum doğrulanamadı: ' + authError.message);
-          return;
-        }
-
-        if (!freshUser) {
-          alert('❌ Oturum doğrulanamadı. Lütfen tekrar giriş yapın.');
-          return;
-        }
-
-        actingUserId = freshUser.id;
-        setCurrentUserId(freshUser.id);
-      }
-    }
-
-    const payload: Record<string, unknown> = {
-      p_application_id: applicationId,
-      p_status: decision,
-    };
-
-    if (actingUserId) {
-      payload.p_actor_id = actingUserId;
-    }
-
-    const { error: updateError } = await supabase.rpc(
+    const { data: updatedApplication, error: updateError } = await supabase.rpc(
       'mark_application_status',
-      payload
+      {
+        p_application_id: applicationId,
+        p_status: decision,
+      }
     );
 
     if (updateError) {
-      alert('❌ Güncelleme hatası: ' + updateError.message);
+      const message = `❌ Başvuru güncellenemedi: ${updateError.message}`;
+      setDecisionFeedback({ type: 'error', message });
+      alert(message);
+      setDecisionLoadingId(null);
       return;
     }
 
-    if (decision === 'accepted' && actingUserId) {
-      const { conversationId: ensuredConversationId, error } =
-        await ensureConversationWithParticipants(
-          supabase,
-          applicationId,
-          actingUserId
-        );
-      conversationError = error;
-      conversationId = ensuredConversationId;
+    const updatedStatus =
+      (updatedApplication as { status?: string } | null)?.status ?? decision;
+
+
+    setApplications((prev) =>
+      prev.map((application) =>
+        application.application_id === applicationId
+          ? { ...application, status: updatedStatus }
+          : application
+      )
+    );
+
+    let conversationError: string | null = null;
+    let conversationId: string | null = null;
+
+    if (decision === 'accepted') {
+      const { data: ensuredConversationId, error: ensureError } =
+        await supabase.rpc('ensure_conversation_for_application', {
+          p_application_id: applicationId,
+        });
+
+      if (ensureError) {
+        console.error(ensureError);
+        conversationError = ensureError.message;
+      } else if (!ensuredConversationId) {
+        conversationError = 'Sohbet oluşturulamadı.';
+      } else {
+        conversationId = String(ensuredConversationId);
+      }
     }
+
+    setDecisionLoadingId(null);
+
 
     const successMessageMap: Record<Decision, string> = {
       accepted: '✅ Başvuru kabul edildi',
@@ -315,10 +360,21 @@ export default function ProducerApplicationsPage() {
       purchased: '🛒 Başvuru satın alma aşamasında işaretlendi',
     };
 
+    const feedbackTypeMap: Record<Decision, DecisionFeedback['type']> = {
+      accepted: 'success',
+      rejected: 'warning',
+      on_hold: 'warning',
+      purchased: 'success',
+    };
+
     if (conversationError) {
-      alert(`⚠️ Başvuru güncellendi ancak sohbet açılamadı: ${conversationError}`);
+      const message = `⚠️ Başvuru güncellendi ancak sohbet açılamadı: ${conversationError}`;
+      setDecisionFeedback({ type: 'warning', message });
+      alert(message);
     } else {
-      alert(successMessageMap[decision]);
+      const message = successMessageMap[decision];
+      setDecisionFeedback({ type: feedbackTypeMap[decision], message });
+      alert(message);
     }
 
     if (decision === 'accepted' && conversationId) {
@@ -330,7 +386,7 @@ export default function ProducerApplicationsPage() {
       }
     }
 
-    fetchApplications(); // Listeyi yenile veya yönlendirme başarısız olursa yedek
+    fetchApplications();
   };
 
   const getBadge = (status: string) => {
@@ -429,6 +485,19 @@ export default function ProducerApplicationsPage() {
           {fetchError}
         </div>
       ) : null}
+      {decisionFeedback ? (
+        <div
+          className={`rounded-lg border p-3 text-sm ${
+            decisionFeedback.type === 'success'
+              ? 'border-green-200 bg-green-50 text-green-800'
+              : decisionFeedback.type === 'warning'
+              ? 'border-yellow-200 bg-yellow-50 text-yellow-800'
+              : 'border-red-200 bg-red-50 text-red-700'
+          }`}
+        >
+          {decisionFeedback.message}
+        </div>
+      ) : null}
 
       {loading ? (
         <p className="text-sm text-[#a38d6d]">Yükleniyor...</p>
@@ -509,7 +578,8 @@ export default function ProducerApplicationsPage() {
                               onClick={() =>
                                 handleDecision(app.application_id, 'accepted')
                               }
-                              className="btn btn-primary"
+                              disabled={decisionLoadingId === app.application_id}
+                              className="btn btn-primary disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               ✅ Kabul Et
                             </button>
@@ -517,7 +587,8 @@ export default function ProducerApplicationsPage() {
                               onClick={() =>
                                 handleDecision(app.application_id, 'on_hold')
                               }
-                              className="btn btn-secondary"
+                              disabled={decisionLoadingId === app.application_id}
+                              className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               ⏳ Beklet
                             </button>
@@ -525,7 +596,8 @@ export default function ProducerApplicationsPage() {
                               onClick={() =>
                                 handleDecision(app.application_id, 'purchased')
                               }
-                              className="btn btn-secondary"
+                              disabled={decisionLoadingId === app.application_id}
+                              className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               🛒 Satın Al
                             </button>
@@ -533,7 +605,8 @@ export default function ProducerApplicationsPage() {
                               onClick={() =>
                                 handleDecision(app.application_id, 'rejected')
                               }
-                              className="btn btn-secondary"
+                              disabled={decisionLoadingId === app.application_id}
+                              className="btn btn-secondary disabled:cursor-not-allowed disabled:opacity-60"
                             >
                               ❌ Reddet
                             </button>
