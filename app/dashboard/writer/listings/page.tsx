@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { getSupabaseClient } from '@/lib/supabaseClient';
-import type { Listing } from '@/types/db';
+import type { VListingUnified } from '@/types/db';
 
 const currency = new Intl.NumberFormat('tr-TR', {
   style: 'currency',
@@ -19,7 +19,7 @@ const budgetLabel = (budgetCents: number | null) => {
 };
 
 export default function BrowseListingsPage() {
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [listings, setListings] = useState<VListingUnified[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +46,7 @@ export default function BrowseListingsPage() {
         setError(error.message);
         setListings([]);
       } else {
-        setListings((data as Listing[]) || []);
+        setListings((data as VListingUnified[]) || []);
       }
       setLoading(false);
     };

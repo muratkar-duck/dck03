@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getSupabaseClient } from '@/lib/supabaseClient';
-import type { Listing } from '@/types/db';
+import type { VListingUnified } from '@/types/db';
 
 type WriterScriptOption = {
   id: string;
@@ -34,7 +34,7 @@ const budgetLabel = (budgetCents: number | null | undefined) => {
 export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const [listing, setListing] = useState<Listing | null>(null);
+  const [listing, setListing] = useState<VListingUnified | null>(null);
   const [loading, setLoading] = useState(true);
   const [scripts, setScripts] = useState<WriterScriptOption[]>([]);
   const [selectedScript, setSelectedScript] = useState('');
@@ -43,7 +43,7 @@ export default function ListingDetailPage() {
   const [submitting, setSubmitting] = useState(false);
   const previousScriptIdsRef = useRef<Set<string>>(new Set());
   const previousMatchingCountRef = useRef(0);
-  const listingRef = useRef<Listing | null>(null);
+  const listingRef = useRef<VListingUnified | null>(null);
   const supabase = useMemo(getSupabaseClient, []);
 
   const normalizeGenre = (genre: string | null | undefined) =>
@@ -92,7 +92,7 @@ export default function ListingDetailPage() {
       if (error) {
         console.error(error.message);
       }
-      setListing((data as Listing | null) ?? null);
+      setListing((data as VListingUnified | null) ?? null);
       setLoading(false);
     };
     fetchListing();
@@ -360,7 +360,7 @@ export default function ListingDetailPage() {
       owner_id: listing?.owner_id ?? null,
     };
 
-    if (listing?.source === 'requests') {
+    if (listing?.source === 'request') {
       (payload as any).request_id = id;
       (payload as any).producer_id = listing?.owner_id ?? null;
     } else {

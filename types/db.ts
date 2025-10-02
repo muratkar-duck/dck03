@@ -23,9 +23,9 @@ export interface Script {
   created_at: string; // ISO
 }
 
-export type ListingSource = 'producer_listings' | 'requests';
+export type ListingSource = 'producer_listing' | 'request';
 
-export interface Listing {
+export type VListingUnified = {
   id: string;
   owner_id: string | null;
   title: string;
@@ -33,9 +33,9 @@ export interface Listing {
   genre: string;
   budget_cents: number | null;
   created_at: string;
-  deadline?: string | null;
+  deadline: string | null;
   source: ListingSource;
-}
+};
 
 export interface ProducerListing {
   id: string;

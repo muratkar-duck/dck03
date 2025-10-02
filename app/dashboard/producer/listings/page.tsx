@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { getSupabaseClient } from '@/lib/supabaseClient';
-import type { Listing } from '@/types/db';
+import type { VListingUnified } from '@/types/db';
 
 const currencyFormatter = new Intl.NumberFormat('tr-TR', {
   style: 'currency',
@@ -43,7 +43,7 @@ const formatDeadline = (deadline: string | null | undefined) => {
 
 export default function ProducerListingsPage() {
   const router = useRouter();
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [listings, setListings] = useState<VListingUnified[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const supabase = useMemo(getSupabaseClient, []);
@@ -88,7 +88,7 @@ export default function ProducerListingsPage() {
       if (listingsError) {
         setError(listingsError.message);
       } else {
-        setListings((data ?? []) as Listing[]);
+        setListings((data ?? []) as VListingUnified[]);
       }
 
       setLoading(false);
@@ -154,7 +154,7 @@ export default function ProducerListingsPage() {
                       Oluşturuldu: {dateFormatter.format(new Date(listing.created_at))}
                     </span>
                     <span>Son teslim: {formatDeadline(listing.deadline)}</span>
-                    {listing.source === 'requests' ? (
+                    {listing.source === 'request' ? (
                       <span className="text-xs uppercase tracking-wide text-[#a38d6d]">
                         Eski Talep
                       </span>
