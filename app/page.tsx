@@ -49,9 +49,9 @@ export default function HomePage() {
   ] as const;
 
   return (
-    <div className="flex min-h-[calc(100vh-10rem)] flex-col gap-16 overflow-hidden">
+    <div className="snap-container flex flex-col gap-16 overflow-x-hidden">
       {/* Hero */}
-      <section className="relative isolate flex flex-col items-center gap-8 overflow-hidden rounded-3xl border border-[#e8dcc5] bg-white/70 px-6 py-16 text-center shadow-lg backdrop-blur-sm md:px-16">
+      <section className="snap-section relative isolate flex flex-col items-center gap-8 overflow-hidden rounded-3xl border border-[#e8dcc5] bg-white/70 px-6 py-16 text-center shadow-lg backdrop-blur-sm md:px-16">
         <div className="absolute inset-x-20 -top-24 h-48 rounded-full bg-brand/10 blur-3xl" aria-hidden />
         <h1 className="text-4xl font-bold text-[#0e5b4a] md:text-5xl">
           Senaryonuz doğru yapımcıyla dakikalar içinde buluşsun
@@ -91,7 +91,7 @@ export default function HomePage() {
       </section>
 
       {/* Özellik Kartları */}
-      <section className="rounded-3xl border border-[#e8dcc5] bg-white/60 px-6 py-12 shadow-sm md:px-12">
+      <section className="snap-section rounded-3xl border border-[#e8dcc5] bg-white/60 px-6 py-12 shadow-sm md:px-12">
         <h2 className="mb-8 text-center text-2xl font-semibold text-[#0e5b4a]">
           🚀 Öne Çıkan Özellikler
         </h2>
@@ -127,7 +127,7 @@ export default function HomePage() {
         <section
           key={section.id}
           id={section.id}
-          className="grid gap-10 rounded-3xl border border-[#e8dcc5] bg-white/70 px-6 py-12 shadow-sm md:grid-cols-2 md:px-12"
+          className="snap-section grid gap-10 rounded-3xl border border-[#e8dcc5] bg-white/70 px-6 py-12 shadow-sm md:grid-cols-2 md:px-12"
         >
           <div className="space-y-4">
             <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[#a38d6d]">
