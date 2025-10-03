@@ -5,6 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { getSupabaseClient } from '@/lib/supabaseClient';
+import type {
+  SupabaseApplicationRow,
+  SupabaseApplicationScriptMetadata,
+} from '@/types/supabase';
 
 type ApplicationRow = {
   application_id: string;
@@ -21,31 +25,6 @@ type ApplicationRow = {
   conversation_id: string | null;
 };
 
-type ScriptMetadata = {
-  id?: unknown;
-  title?: unknown;
-  length?: unknown;
-  price_cents?: unknown;
-  writer_email?: unknown;
-} | null;
-
-type RpcApplicationRow = {
-  application_id: string | null;
-  status: string | null;
-  created_at: string | null;
-  listing_id: string | null;
-  producer_listing_id: string | null;
-  request_id: string | null;
-  owner_id: string | null;
-  producer_id: string | null;
-  script_id: string | null;
-  script_metadata: ScriptMetadata;
-  listing_title: string | null;
-  listing_source: string | null;
-  writer_email: string | null;
-  conversation_id: string | null;
-};
-
 type IdFilter = 'all' | 'listing' | 'producer_listing' | 'request';
 type Decision = 'accepted' | 'rejected' | 'on_hold' | 'purchased';
 
@@ -58,7 +37,7 @@ const PAGE_SIZE = 10;
 
 export default function ProducerApplicationsPage() {
   const router = useRouter();
-  const [rawApplications, setRawApplications] = useState<RpcApplicationRow[]>([]);
+  const [rawApplications, setRawApplications] = useState<SupabaseApplicationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [idFilterType, setIdFilterType] = useState<IdFilter>('all');
@@ -68,6 +47,7 @@ export default function ProducerApplicationsPage() {
   const [decisionFeedback, setDecisionFeedback] = useState<DecisionFeedback | null>(
     null
   );
+  const [applications, setApplications] = useState<ApplicationRow[]>([]);
   const supabase = useMemo(getSupabaseClient, []);
 
   const fetchApplications = useCallback(async () => {
@@ -99,8 +79,9 @@ export default function ProducerApplicationsPage() {
 
     let query = supabase
       .from('applications')
-      .select(`
-        id,
+      .select(
+        `
+        application_id:id,
         status,
         created_at,
         listing_id,
@@ -113,7 +94,9 @@ export default function ProducerApplicationsPage() {
         listing:v_listings_unified!inner(id, title, owner_id, source),
         writer:users!applications_writer_id_fkey(id, email),
         conversations(id)
-      `, { count: 'exact' })
+      `,
+        { count: 'exact' }
+      )
       .or(`owner_id.eq.${user.id},producer_id.eq.${user.id}`)
       .order('created_at', { ascending: false })
       .range(rangeStart, rangeEnd);
@@ -132,11 +115,7 @@ export default function ProducerApplicationsPage() {
       }
     }
 
-    const { data, error, count } = (await query) as {
-      data: SupabaseApplicationRow[] | null;
-      error: { message: string } | null;
-      count: number | null;
-    };
+    const { data, error } = await query;
 
 
     if (error) {
@@ -144,7 +123,7 @@ export default function ProducerApplicationsPage() {
       setRawApplications([]);
       setFetchError(`Supabase hatası: ${error.message}`);
     } else {
-      const rows = Array.isArray(data) ? (data as RpcApplicationRow[]) : [];
+      const rows: SupabaseApplicationRow[] = Array.isArray(data) ? data : [];
       setRawApplications(rows);
       setFetchError(null);
     }
@@ -210,53 +189,79 @@ export default function ProducerApplicationsPage() {
     return filteredApplications.slice(start, end);
   }, [currentPage, filteredApplications]);
 
-  const applications: ApplicationRow[] = useMemo(() => {
-    return paginatedApplications.map((item) => {
-      const scriptMetadata =
+  const mapApplicationRow = useCallback(
+    (item: SupabaseApplicationRow): ApplicationRow => {
+      const scriptMetadata: SupabaseApplicationScriptMetadata =
         item.script_metadata && typeof item.script_metadata === 'object'
-          ? (item.script_metadata as ScriptMetadata)
+          ? item.script_metadata
           : null;
 
       const rawLength = scriptMetadata?.length ?? null;
-      const normalizedLength =
-        typeof rawLength === 'number'
-          ? rawLength
-          : rawLength != null && !Number.isNaN(Number(rawLength))
-          ? Number(rawLength)
-          : null;
+      const normalizedLength = (() => {
+        if (typeof rawLength === 'number') {
+          return rawLength;
+        }
+
+        if (typeof rawLength === 'string' && rawLength.trim() !== '') {
+          const parsed = Number(rawLength);
+          return Number.isNaN(parsed) ? null : parsed;
+        }
+
+        return null;
+      })();
 
       const rawPrice = scriptMetadata?.price_cents ?? null;
-      const normalizedPrice =
-        typeof rawPrice === 'number'
-          ? rawPrice
-          : rawPrice != null && !Number.isNaN(Number(rawPrice))
-          ? Number(rawPrice)
-          : null;
+      const normalizedPrice = (() => {
+        if (typeof rawPrice === 'number') {
+          return rawPrice;
+        }
+
+        if (typeof rawPrice === 'string' && rawPrice.trim() !== '') {
+          const parsed = Number(rawPrice);
+          return Number.isNaN(parsed) ? null : parsed;
+        }
+
+        return null;
+      })();
 
       const rawListingId =
-        item.listing_id ?? item.producer_listing_id ?? item.request_id ?? null;
+        item.listing_id ??
+        item.producer_listing_id ??
+        item.request_id ??
+        item.listing?.id ??
+        null;
       const resolvedListingId = rawListingId != null ? String(rawListingId) : '';
 
-      const rawScriptId = item.script_id ?? scriptMetadata?.id ?? null;
+      const rawScriptId =
+        item.script_id ?? (scriptMetadata?.id != null ? scriptMetadata.id : null);
       const resolvedScriptId = rawScriptId != null ? String(rawScriptId) : '';
 
       const scriptTitle =
         scriptMetadata?.title != null ? String(scriptMetadata.title) : '';
 
       const listingTitle =
-        item.listing_title != null ? String(item.listing_title) : '';
+        item.listing?.title != null ? String(item.listing.title) : '';
 
       const applicationId =
-        item.application_id != null ? String(item.application_id) : '';
+        item.application_id != null
+          ? String(item.application_id)
+          : '';
 
       const status = item.status != null ? String(item.status) : '';
 
       const writerEmail =
-        item.writer_email != null
-          ? String(item.writer_email)
+        item.writer?.email != null
+          ? String(item.writer.email)
           : scriptMetadata?.writer_email != null
           ? String(scriptMetadata.writer_email)
           : null;
+
+      const listingSource =
+        item.listing?.source != null ? String(item.listing.source) : null;
+
+      const conversationId = Array.isArray(item.conversations)
+        ? item.conversations.find((conversation) => conversation?.id)?.id
+        : null;
 
       return {
         application_id: applicationId,
@@ -264,18 +269,23 @@ export default function ProducerApplicationsPage() {
         created_at: item.created_at ?? new Date().toISOString(),
         listing_id: resolvedListingId,
         listing_title: listingTitle,
-        listing_source:
-          item.listing_source != null ? String(item.listing_source) : null,
+        listing_source: listingSource,
         script_id: resolvedScriptId,
         script_title: scriptTitle,
         writer_email: writerEmail,
         length: normalizedLength,
         price_cents: normalizedPrice,
         conversation_id:
-          item.conversation_id != null ? String(item.conversation_id) : null,
-      } as ApplicationRow;
-    });
-  }, [paginatedApplications]);
+          conversationId != null ? String(conversationId) : null,
+      };
+    },
+    []
+  );
+
+  useEffect(() => {
+    const mapped = paginatedApplications.map(mapApplicationRow);
+    setApplications(mapped);
+  }, [mapApplicationRow, paginatedApplications]);
 
   const resetToFirstPage = () => {
     setCurrentPage(1);
