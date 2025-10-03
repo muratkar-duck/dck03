@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { getSupabaseClient } from '@/lib/supabaseClient';
-import type { VListingUnified } from '@/types/db';
+import type { VListingUnified } from '@/types/supabase';
 
 type WriterScriptOption = {
   id: string;
@@ -29,6 +29,36 @@ const budgetLabel = (budget: number | null | undefined) => {
     return currency.format(budget);
   }
   return 'Belirtilmemiş';
+};
+
+const normalizeListing = (row: any): VListingUnified => {
+  const rawBudget = row?.budget;
+  const normalizedBudget =
+    typeof rawBudget === 'number'
+      ? rawBudget
+      : rawBudget != null && !Number.isNaN(Number(rawBudget))
+      ? Number(rawBudget)
+      : null;
+
+  const rawSource = typeof row?.source === 'string' ? row.source.toLowerCase() : null;
+  const normalizedSource = rawSource === 'request' ? 'request' : 'producer';
+
+  return {
+    id: row?.id != null ? String(row.id) : '',
+    owner_id: row?.owner_id != null ? String(row.owner_id) : null,
+    title: row?.title != null ? String(row.title) : '',
+    description: row?.description != null ? String(row.description) : null,
+    genre: row?.genre != null ? String(row.genre) : null,
+    budget: normalizedBudget,
+    created_at:
+      row?.created_at != null ? String(row.created_at) : new Date().toISOString(),
+    deadline: row?.deadline != null ? String(row.deadline) : null,
+    status:
+      typeof row?.status === 'string' && row.status.trim() !== ''
+        ? row.status
+        : null,
+    source: normalizedSource,
+  };
 };
 
 export default function ListingDetailPage() {
@@ -92,7 +122,7 @@ export default function ListingDetailPage() {
       if (error) {
         console.error(error.message);
       }
-      setListing((data as VListingUnified | null) ?? null);
+      setListing(data ? normalizeListing(data) : null);
       setLoading(false);
     };
     fetchListing();

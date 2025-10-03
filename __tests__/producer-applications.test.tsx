@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { SupabaseApplicationRow } from '@/types/supabase';
 
 const mockPush = jest.fn();
 
@@ -65,7 +64,7 @@ describe('ProducerApplicationsPage', () => {
             email: 'writer@example.com',
           },
           conversations: [],
-        } satisfies SupabaseApplicationRow,
+        },
       ],
       error: null,
     });

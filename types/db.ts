@@ -44,23 +44,6 @@ export interface ProducerInterestNotificationPayload {
   producer_id: string;
 }
 
-export type ListingSource = 'producer_listing' | 'request';
-
-export type VListingUnifiedStatus = 'open' | 'closed' | 'draft' | string;
-
-export interface VListingUnified {
-  id: string;
-  owner_id: string | null;
-  title: string;
-  description: string | null;
-  genre: string | null;
-  budget: number | null;
-  created_at: string;
-  deadline: string | null;
-  status: VListingUnifiedStatus | null;
-  source: ListingSource | null;
-}
-
 export interface ProducerListing {
   id: string;
   owner_id: string;
