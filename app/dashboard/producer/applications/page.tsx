@@ -35,6 +35,89 @@ type DecisionFeedback = {
 
 const PAGE_SIZE = 10;
 
+const normalizeSupabaseApplicationRow = (
+  item: any
+): SupabaseApplicationRow => {
+  const listingData = Array.isArray(item?.listing)
+    ? item.listing[0]
+    : item?.listing;
+
+  const rawListingSource =
+    typeof listingData?.source === 'string'
+      ? listingData.source.toLowerCase()
+      : null;
+  const listingSource =
+    rawListingSource === 'request'
+      ? 'request'
+      : rawListingSource === 'producer'
+      ? 'producer'
+      : rawListingSource === 'producer_listing'
+      ? 'producer'
+      : null;
+
+  const listingTitle =
+    listingData?.title != null ? String(listingData.title) : null;
+
+  const scriptMetadata =
+    item?.script_metadata &&
+    typeof item.script_metadata === 'object' &&
+    !Array.isArray(item.script_metadata)
+      ? (item.script_metadata as SupabaseApplicationScriptMetadata)
+      : null;
+
+  const writerData = Array.isArray(item?.writer)
+    ? item.writer[0]
+    : item?.writer;
+
+  const writerEmail =
+    writerData?.email != null
+      ? String(writerData.email)
+      : scriptMetadata?.writer_email != null
+      ? String(scriptMetadata.writer_email)
+      : null;
+
+  const conversations = Array.isArray(item?.conversations)
+    ? item.conversations.map((conversation: any) => ({
+        id:
+          conversation?.id != null ? String(conversation.id) : null,
+      }))
+    : [];
+
+  const applicationId =
+    item?.application_id != null
+      ? String(item.application_id)
+      : item?.id != null
+      ? String(item.id)
+      : null;
+
+  return {
+    application_id: applicationId,
+    status: item?.status != null ? String(item.status) : null,
+    created_at: item?.created_at != null ? String(item.created_at) : null,
+    listing_id:
+      item?.listing_id != null
+        ? String(item.listing_id)
+        : listingData?.id != null
+        ? String(listingData.id)
+        : null,
+    producer_listing_id:
+      item?.producer_listing_id != null
+        ? String(item.producer_listing_id)
+        : null,
+    request_id:
+      item?.request_id != null ? String(item.request_id) : null,
+    request_title: listingSource === 'request' ? listingTitle : null,
+    listing_title: listingTitle,
+    listing_source: listingSource,
+    owner_id: item?.owner_id != null ? String(item.owner_id) : null,
+    producer_id: item?.producer_id != null ? String(item.producer_id) : null,
+    script_id: item?.script_id != null ? String(item.script_id) : null,
+    script_metadata: scriptMetadata,
+    writer_email: writerEmail,
+    conversations: conversations.length > 0 ? conversations : null,
+  };
+};
+
 export default function ProducerApplicationsPage() {
   const router = useRouter();
   const [rawApplications, setRawApplications] = useState<SupabaseApplicationRow[]>([]);
@@ -117,13 +200,14 @@ export default function ProducerApplicationsPage() {
 
     const { data, error } = await query;
 
-
     if (error) {
       console.error('Başvurular alınamadı:', error.message);
       setRawApplications([]);
       setFetchError(`Supabase hatası: ${error.message}`);
     } else {
-      const rows: SupabaseApplicationRow[] = Array.isArray(data) ? data : [];
+      const rows: SupabaseApplicationRow[] = Array.isArray(data)
+        ? data.map((item) => normalizeSupabaseApplicationRow(item))
+        : [];
       setRawApplications(rows);
       setFetchError(null);
     }
@@ -226,11 +310,7 @@ export default function ProducerApplicationsPage() {
       })();
 
       const rawListingId =
-        item.listing_id ??
-        item.producer_listing_id ??
-        item.request_id ??
-        item.listing?.id ??
-        null;
+        item.listing_id ?? item.producer_listing_id ?? item.request_id ?? null;
       const resolvedListingId = rawListingId != null ? String(rawListingId) : '';
 
       const rawScriptId =
@@ -241,7 +321,11 @@ export default function ProducerApplicationsPage() {
         scriptMetadata?.title != null ? String(scriptMetadata.title) : '';
 
       const listingTitle =
-        item.listing?.title != null ? String(item.listing.title) : '';
+        item.listing_title != null
+          ? String(item.listing_title)
+          : item.request_title != null
+          ? String(item.request_title)
+          : '';
 
       const applicationId =
         item.application_id != null
@@ -251,14 +335,13 @@ export default function ProducerApplicationsPage() {
       const status = item.status != null ? String(item.status) : '';
 
       const writerEmail =
-        item.writer?.email != null
-          ? String(item.writer.email)
+        item.writer_email != null
+          ? String(item.writer_email)
           : scriptMetadata?.writer_email != null
           ? String(scriptMetadata.writer_email)
           : null;
 
-      const listingSource =
-        item.listing?.source != null ? String(item.listing.source) : null;
+      const listingSource = item.listing_source;
 
       const conversationId = Array.isArray(item.conversations)
         ? item.conversations.find((conversation) => conversation?.id)?.id
@@ -366,10 +449,10 @@ export default function ProducerApplicationsPage() {
         return {
           ...application,
           status: updatedStatus,
-          conversation_id:
+          conversations:
             decision === 'accepted' && conversationId
-              ? conversationId
-              : application.conversation_id,
+              ? [{ id: conversationId }]
+              : application.conversations,
         };
       })
     );

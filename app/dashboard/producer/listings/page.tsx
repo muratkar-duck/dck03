@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { getSupabaseClient } from '@/lib/supabaseClient';
-import type { VListingUnified } from '@/types/db';
+import type { VListingUnified } from '@/types/supabase';
 
 const currencyFormatter = new Intl.NumberFormat('tr-TR', {
   style: 'currency',
@@ -37,11 +37,41 @@ const getListingBadge = (listing: VListingUnified) => {
     return 'Talep';
   }
 
-  if (listingType === 'producer_listing') {
+  if (listingType === 'producer') {
     return 'Yapımcı İlanı';
   }
 
   return null;
+};
+
+const normalizeListing = (row: any): VListingUnified => {
+  const rawBudget = row?.budget;
+  const normalizedBudget =
+    typeof rawBudget === 'number'
+      ? rawBudget
+      : rawBudget != null && !Number.isNaN(Number(rawBudget))
+      ? Number(rawBudget)
+      : null;
+
+  const rawSource = typeof row?.source === 'string' ? row.source.toLowerCase() : null;
+  const normalizedSource = rawSource === 'request' ? 'request' : 'producer';
+
+  return {
+    id: row?.id != null ? String(row.id) : '',
+    owner_id: row?.owner_id != null ? String(row.owner_id) : null,
+    title: row?.title != null ? String(row.title) : '',
+    description: row?.description != null ? String(row.description) : null,
+    genre: row?.genre != null ? String(row.genre) : null,
+    budget: normalizedBudget,
+    created_at:
+      row?.created_at != null ? String(row.created_at) : new Date().toISOString(),
+    deadline: row?.deadline != null ? String(row.deadline) : null,
+    status:
+      typeof row?.status === 'string' && row.status.trim() !== ''
+        ? row.status
+        : null,
+    source: normalizedSource,
+  };
 };
 
 export default function ProducerListingsPage() {
@@ -91,7 +121,10 @@ export default function ProducerListingsPage() {
       if (listingsError) {
         setError(listingsError.message);
       } else {
-        setListings((data ?? []) as VListingUnified[]);
+        const rows = Array.isArray(data)
+          ? data.map((item) => normalizeListing(item))
+          : [];
+        setListings(rows);
       }
 
       setLoading(false);
