@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import type { SupabaseApplicationRow } from '@/types/supabase';
 
 const mockPush = jest.fn();
 
@@ -28,33 +29,13 @@ jest.mock('@/lib/supabaseClient', () => ({
   getSupabaseClient: mockGetSupabaseClient,
 }));
 
-type QueryResponse = {
-  data: Array<{
-    application_id: string | null;
-    status: string;
-    created_at: string;
-    listing_id: string | null;
-    producer_listing_id: string | null;
-    request_id: string | null;
-    owner_id: string | null;
-    producer_id: string | null;
-    script_id: string | null;
-    script_metadata: Record<string, unknown> | null;
-    listing_title: string | null;
-    listing_source: string | null;
-    writer_email: string | null;
-    conversation_id: string | null;
-  }>;
-  error: null;
-};
-
 describe('ProducerApplicationsPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('renders application list from supabase response', async () => {
-    const response: QueryResponse = {
+    const mockRange = jest.fn().mockResolvedValue({
       data: [
         {
           application_id: 'application-1',
@@ -71,17 +52,34 @@ describe('ProducerApplicationsPage', () => {
             title: 'Test Script',
             length: 90,
             price_cents: 150000,
+            writer_email: 'writer@example.com',
           },
-          listing_title: 'Test Listing',
-          listing_source: 'request',
-          writer_email: 'writer@example.com',
-          conversation_id: null,
-        },
+          listing: {
+            id: 'listing-1',
+            title: 'Test Listing',
+            owner_id: 'owner-1',
+            source: 'request',
+          },
+          writer: {
+            id: 'writer-1',
+            email: 'writer@example.com',
+          },
+          conversations: [],
+        } satisfies SupabaseApplicationRow,
       ],
       error: null,
-    };
+    });
 
-    const mockRpc = jest.fn().mockResolvedValue(response);
+    const queryBuilder: any = {};
+    const mockSelect = jest.fn(() => queryBuilder);
+    const mockOr = jest.fn(() => queryBuilder);
+    const mockOrder = jest.fn(() => queryBuilder);
+    const mockEq = jest.fn(() => queryBuilder);
+    queryBuilder.select = mockSelect;
+    queryBuilder.or = mockOr;
+    queryBuilder.order = mockOrder;
+    queryBuilder.range = mockRange;
+    queryBuilder.eq = mockEq;
 
     const mockSupabase = {
       auth: {
@@ -89,7 +87,7 @@ describe('ProducerApplicationsPage', () => {
           data: { user: { id: 'producer-1' } },
         }),
       },
-      rpc: mockRpc,
+      from: jest.fn().mockReturnValue(queryBuilder),
     };
 
     mockGetSupabaseClient.mockReturnValue(mockSupabase);
@@ -105,8 +103,8 @@ describe('ProducerApplicationsPage', () => {
     expect(screen.getByText('Test Script')).toBeInTheDocument();
     expect(screen.getByText('Test Listing')).toBeInTheDocument();
     expect(mockSupabase.auth.getUser).toHaveBeenCalledTimes(1);
-    expect(mockSupabase.rpc).toHaveBeenCalledWith('get_producer_applications', {
-      p_producer_id: 'producer-1',
-    });
+    expect(mockSupabase.from).toHaveBeenCalledWith('applications');
+    expect(queryBuilder.select).toHaveBeenCalled();
+    expect(mockRange).toHaveBeenCalled();
   });
 });
