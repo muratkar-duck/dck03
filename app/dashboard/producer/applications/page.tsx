@@ -129,7 +129,12 @@ export default function ProducerApplicationsPage() {
     }
 
     setLoading(false);
-  }, [supabase]);
+  }, [
+    currentPage,
+    idFilterType,
+    idFilterValue,
+    supabase,
+  ]);
 
   useEffect(() => {
     fetchApplications();
