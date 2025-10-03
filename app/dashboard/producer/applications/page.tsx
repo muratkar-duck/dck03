@@ -131,6 +131,8 @@ export default function ProducerApplicationsPage() {
     null
   );
   const [applications, setApplications] = useState<ApplicationRow[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [useClientPagination, setUseClientPagination] = useState(false);
   const supabase = useMemo(getSupabaseClient, []);
 
   const fetchApplications = useCallback(async () => {
@@ -198,18 +200,23 @@ export default function ProducerApplicationsPage() {
       }
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
 
     if (error) {
       console.error('Başvurular alınamadı:', error.message);
       setRawApplications([]);
       setFetchError(`Supabase hatası: ${error.message}`);
+      setTotalCount(0);
+      setUseClientPagination(false);
     } else {
       const rows: SupabaseApplicationRow[] = Array.isArray(data)
         ? data.map((item) => normalizeSupabaseApplicationRow(item))
         : [];
       setRawApplications(rows);
       setFetchError(null);
+      const effectiveCount = typeof count === 'number' ? count : rows.length;
+      setTotalCount(effectiveCount);
+      setUseClientPagination(typeof count !== 'number');
     }
 
     setLoading(false);
@@ -255,8 +262,6 @@ export default function ProducerApplicationsPage() {
     });
   }, [rawApplications, idFilterType, trimmedFilterValue]);
 
-  const totalCount = filteredApplications.length;
-
   useEffect(() => {
     if (loading) {
       return;
@@ -269,10 +274,14 @@ export default function ProducerApplicationsPage() {
   }, [currentPage, loading, totalCount]);
 
   const paginatedApplications = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    const end = start + PAGE_SIZE;
-    return filteredApplications.slice(start, end);
-  }, [currentPage, filteredApplications]);
+    if (useClientPagination) {
+      const start = (currentPage - 1) * PAGE_SIZE;
+      const end = start + PAGE_SIZE;
+      return filteredApplications.slice(start, end);
+    }
+
+    return filteredApplications;
+  }, [currentPage, filteredApplications, useClientPagination]);
 
   const mapApplicationRow = useCallback(
     (item: SupabaseApplicationRow): ApplicationRow => {
