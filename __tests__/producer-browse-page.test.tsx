@@ -125,7 +125,7 @@ describe('BrowseScriptsPage interest handling', () => {
     );
 
     expect(supabase.rpc).toHaveBeenCalledWith('rpc_mark_interest', {
-      p_script_id: baseScript.id,
+      script_id: baseScript.id,
     });
     expect(supabase.rpc).toHaveBeenCalledWith('enqueue_notification', {
       recipient_id: baseScript.owner_id,
@@ -164,7 +164,7 @@ describe('BrowseScriptsPage interest handling', () => {
     );
 
     expect(supabase.rpc).toHaveBeenCalledWith('rpc_mark_interest', {
-      p_script_id: baseScript.id,
+      script_id: baseScript.id,
     });
   });
 
@@ -249,7 +249,7 @@ describe('BrowseScriptsPage interest handling', () => {
     );
 
     expect(supabase.rpc).toHaveBeenCalledWith('rpc_mark_interest', {
-      p_script_id: baseScript.id,
+      script_id: baseScript.id,
     });
     expect(supabase.rpc).toHaveBeenCalledWith('enqueue_notification', {
       recipient_id: baseScript.owner_id,
@@ -286,7 +286,7 @@ describe('BrowseScriptsPage interest handling', () => {
     );
 
     expect(supabase.rpc).toHaveBeenCalledWith('rpc_mark_interest', {
-      p_script_id: baseScript.id,
+      script_id: baseScript.id,
     });
     expect(supabase.rpc).not.toHaveBeenCalledWith('enqueue_notification', expect.anything());
   });

@@ -304,7 +304,7 @@ export default function BrowseScriptsPage() {
         const { error: markInterestError } = await supabase.rpc(
           'rpc_mark_interest',
           {
-            p_script_id: script.id,
+            script_id: script.id,
           }
         );
 
