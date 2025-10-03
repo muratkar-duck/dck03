@@ -129,12 +129,8 @@ export default function ProducerApplicationsPage() {
     }
 
     setLoading(false);
-  }, [
-    currentPage,
-    idFilterType,
-    idFilterValue,
-    supabase,
-  ]);
+  }, [supabase, currentPage, idFilterType, idFilterValue]);
+
 
   useEffect(() => {
     fetchApplications();
@@ -337,15 +333,6 @@ export default function ProducerApplicationsPage() {
     const updatedStatus =
       (updatedApplication as { status?: string } | null)?.status ?? decision;
 
-
-    setApplications((prev) =>
-      prev.map((application) =>
-        application.application_id === applicationId
-          ? { ...application, status: updatedStatus }
-          : application
-      )
-    );
-
     let conversationError: string | null = null;
     let conversationId: string | null = null;
 
@@ -364,6 +351,28 @@ export default function ProducerApplicationsPage() {
         conversationId = String(ensuredConversationId);
       }
     }
+
+    setRawApplications((previous) =>
+      previous.map((application) => {
+        const normalizedId =
+          application.application_id != null
+            ? String(application.application_id)
+            : '';
+
+        if (normalizedId !== applicationId) {
+          return application;
+        }
+
+        return {
+          ...application,
+          status: updatedStatus,
+          conversation_id:
+            decision === 'accepted' && conversationId
+              ? conversationId
+              : application.conversation_id,
+        };
+      })
+    );
 
     setDecisionLoadingId(null);
 
