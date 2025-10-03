@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getListingSourceLabel, getListingStatusLabel } from '@/lib/listings';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import Link from 'next/link';
 
@@ -577,6 +578,12 @@ export default function BrowseScriptsPage() {
           ) : (
             <div className="grid md:grid-cols-2 gap-6">
               {listings.map((listing) => {
+                const statusLabel =
+                  getListingStatusLabel(listing.status) ??
+                  (listing.status ? String(listing.status) : null);
+                const sourceLabel =
+                  getListingSourceLabel(listing.source) ??
+                  (listing.source ? String(listing.source) : null);
                 const formattedDeadline = listing.deadline
                   ? new Date(listing.deadline).toISOString().slice(0, 10)
                   : '—';
@@ -587,7 +594,7 @@ export default function BrowseScriptsPage() {
                         {listing.title || 'Başlıksız İlan'}
                       </h2>
                       <span className="text-xs font-medium uppercase tracking-wide text-[#7a5c36]">
-                        {listing.status || 'Durum Bilinmiyor'}
+                        {statusLabel || 'Durum Bilinmiyor'}
                       </span>
                     </div>
                     <p className="text-sm text-[#4a3d2f]">
@@ -616,7 +623,7 @@ export default function BrowseScriptsPage() {
                       </div>
                       <div>
                         <dt className="font-semibold">Kaynak</dt>
-                        <dd>{listing.source || 'Bilinmiyor'}</dd>
+                        <dd>{sourceLabel || 'Bilinmiyor'}</dd>
                       </div>
                     </dl>
                     <p className="text-xs text-gray-500">

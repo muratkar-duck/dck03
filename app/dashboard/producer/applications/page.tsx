@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
+import { getListingSourceLabel } from '@/lib/listings';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import type {
   SupabaseApplicationRow,
@@ -123,7 +124,8 @@ export default function ProducerApplicationsPage() {
       setRawApplications([]);
       setFetchError(`Supabase hatası: ${error.message}`);
     } else {
-      const rows: SupabaseApplicationRow[] = Array.isArray(data) ? data : [];
+      const rawRows = Array.isArray(data) ? data : [];
+      const rows = rawRows as unknown as SupabaseApplicationRow[];
       setRawApplications(rows);
       setFetchError(null);
     }
@@ -257,8 +259,7 @@ export default function ProducerApplicationsPage() {
           ? String(scriptMetadata.writer_email)
           : null;
 
-      const listingSource =
-        item.listing?.source != null ? String(item.listing.source) : null;
+      const listingSource = getListingSourceLabel(item.listing?.source ?? null);
 
       const conversationId = Array.isArray(item.conversations)
         ? item.conversations.find((conversation) => conversation?.id)?.id

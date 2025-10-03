@@ -38,4 +38,5 @@ export interface SupabaseApplicationRow {
   listing: SupabaseApplicationListing | null;
   writer: SupabaseApplicationWriter | null;
   conversations: SupabaseApplicationConversation[] | null;
+  conversation_id?: string | null;
 }

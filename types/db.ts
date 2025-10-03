@@ -44,7 +44,7 @@ export interface ProducerInterestNotificationPayload {
   producer_id: string;
 }
 
-export type ListingSource = 'producer_listing' | 'request';
+export type ListingSource = 'producer' | 'request';
 
 export type VListingUnifiedStatus = 'open' | 'closed' | 'draft' | string;
 

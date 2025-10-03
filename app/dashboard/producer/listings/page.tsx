@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { getSupabaseClient } from '@/lib/supabaseClient';
 import type { VListingUnified } from '@/types/db';
+import { getListingSourceLabel, getListingStatusLabel } from '@/lib/listings';
 
 const currencyFormatter = new Intl.NumberFormat('tr-TR', {
   style: 'currency',
@@ -30,19 +31,8 @@ const formatDeadline = (deadline: string | null | undefined) => {
   return deadline.slice(0, 10);
 };
 
-const getListingBadge = (listing: VListingUnified) => {
-  const listingType = listing.status ?? listing.source;
-
-  if (listingType === 'request') {
-    return 'Talep';
-  }
-
-  if (listingType === 'producer_listing') {
-    return 'Yapımcı İlanı';
-  }
-
-  return null;
-};
+const getListingBadge = (listing: VListingUnified) =>
+  getListingSourceLabel(listing.source);
 
 export default function ProducerListingsPage() {
   const router = useRouter();
@@ -137,41 +127,54 @@ export default function ProducerListingsPage() {
           </div>
         ) : (
           <ul className="space-y-4">
-            {listings.map((listing) => (
-              <li key={listing.id}>
-                <Link
-                  href={`/dashboard/producer/listings/${listing.id}`}
-                  className="block p-4 bg-white border rounded-lg shadow-sm space-y-2 hover:border-[#0e5b4a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e5b4a]"
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <h2 className="text-lg font-semibold text-[#0e5b4a]">
-                      {listing.title}
-                    </h2>
-                    <span className="text-sm font-medium text-[#ffaa06]">
-                      {budgetLabel(listing.budget)}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-4 text-sm text-[#7a5c36]">
-                    <span>Tür: {listing.genre}</span>
-                    <span>
-                      Oluşturuldu: {dateFormatter.format(new Date(listing.created_at))}
-                    </span>
-                    <span>Son teslim: {formatDeadline(listing.deadline)}</span>
-                    {listing.source === 'request' ? (
+            {listings.map((listing) => {
+              const badge = getListingBadge(listing);
+              const statusLabel = getListingStatusLabel(listing.status);
 
-                      <span className="text-xs uppercase tracking-wide text-[#a38d6d]">
-                        {getListingBadge(listing)}
+              return (
+                <li key={listing.id}>
+                  <Link
+                    href={`/dashboard/producer/listings/${listing.id}`}
+                    className="block p-4 bg-white border rounded-lg shadow-sm space-y-2 hover:border-[#0e5b4a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0e5b4a]"
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <h2 className="text-lg font-semibold text-[#0e5b4a]">
+                        {listing.title}
+                      </h2>
+                      <span className="text-sm font-medium text-[#ffaa06]">
+                        {budgetLabel(listing.budget)}
                       </span>
-                    ) : null}
-                  </div>
-                  {listing.description ? (
-                    <p className="text-sm text-[#4f3d2a]">{listing.description}</p>
-                  ) : (
-                    <p className="text-sm text-[#a38d6d]">Açıklama bulunamadı.</p>
-                  )}
-                </Link>
-              </li>
-            ))}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-[#7a5c36]">
+                      <span>Tür: {listing.genre}</span>
+                      <span>
+                        Oluşturuldu: {dateFormatter.format(new Date(listing.created_at))}
+                      </span>
+                      <span>Son teslim: {formatDeadline(listing.deadline)}</span>
+                      {badge || statusLabel ? (
+                        <div className="flex items-center gap-2 text-xs">
+                          {badge ? (
+                            <span className="uppercase tracking-wide text-[#a38d6d]">
+                              {badge}
+                            </span>
+                          ) : null}
+                          {statusLabel ? (
+                            <span className="rounded-full bg-[#f4ede3] px-2 py-0.5 text-[0.7rem] font-medium normal-case text-[#7a5c36]">
+                              {statusLabel}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                    {listing.description ? (
+                      <p className="text-sm text-[#4f3d2a]">{listing.description}</p>
+                    ) : (
+                      <p className="text-sm text-[#a38d6d]">Açıklama bulunamadı.</p>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

@@ -13,7 +13,7 @@ SELECT
   l.created_at,
   l.deadline,
   'open'::text AS status,
-  'producer_listing'::text AS source
+  'producer'::text AS source
 FROM public.producer_listings l
 UNION ALL
 SELECT
