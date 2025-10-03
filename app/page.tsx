@@ -49,7 +49,7 @@ export default function HomePage() {
   ] as const;
 
   return (
-    <div className="flex min-h-[calc(100vh-10rem)] flex-col gap-16 overflow-hidden">
+    <div className="flex min-h-full flex-col gap-16 overflow-hidden">
       {/* Hero */}
       <section className="relative isolate flex flex-col items-center gap-8 overflow-hidden rounded-3xl border border-[#e8dcc5] bg-white/70 px-6 py-16 text-center shadow-lg backdrop-blur-sm md:px-16">
         <div className="absolute inset-x-20 -top-24 h-48 rounded-full bg-brand/10 blur-3xl" aria-hidden />
