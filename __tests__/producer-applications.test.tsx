@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { SupabaseApplicationRow } from '@/types/supabase';
+import type { SupabaseApplicationRow } from '@/types/producer-applications';
 
 const mockPush = jest.fn();
 
@@ -47,24 +47,18 @@ describe('ProducerApplicationsPage', () => {
           owner_id: 'owner-1',
           producer_id: 'producer-1',
           script_id: 'script-1',
-          script_metadata: {
-            id: 'script-1',
-            title: 'Test Script',
-            length: 90,
-            price_cents: 150000,
-            writer_email: 'writer@example.com',
-          },
-          listing: {
-            id: 'listing-1',
-            title: 'Test Listing',
-            owner_id: 'owner-1',
-            source: 'request',
-          },
-          writer: {
-            id: 'writer-1',
-            email: 'writer@example.com',
-          },
-          conversations: [],
+          script_title: 'Test Script',
+          script_genre: 'Drama',
+          script_length: 90,
+          script_price_cents: 150000,
+          script_writer_email: 'writer@example.com',
+          listing_title: 'Test Listing',
+          listing_source: 'request',
+          request_title: null,
+          request_genre: null,
+          request_length: null,
+          request_writer_email: null,
+          conversation_id: null,
         } satisfies SupabaseApplicationRow,
       ],
       error: null,

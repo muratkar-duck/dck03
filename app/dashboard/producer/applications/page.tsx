@@ -5,10 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AuthGuard from '@/components/AuthGuard';
 import { getSupabaseClient } from '@/lib/supabaseClient';
-import type {
-  SupabaseApplicationRow,
-  SupabaseApplicationScriptMetadata,
-} from '@/types/supabase';
+import type { SupabaseApplicationRow } from '@/types/producer-applications';
 
 type ApplicationRow = {
   application_id: string;
@@ -90,10 +87,18 @@ export default function ProducerApplicationsPage() {
         owner_id,
         producer_id,
         script_id,
-        script_metadata,
-        listing:v_listings_unified!inner(id, title, owner_id, source),
-        writer:users!applications_writer_id_fkey(id, email),
-        conversations(id)
+        script_title,
+        script_genre,
+        script_length,
+        script_price_cents,
+        script_writer_email,
+        listing_title,
+        listing_source,
+        request_title,
+        request_genre,
+        request_length,
+        request_writer_email,
+        conversation_id
       `,
         { count: 'exact' }
       )
@@ -190,97 +195,60 @@ export default function ProducerApplicationsPage() {
     return filteredApplications.slice(start, end);
   }, [currentPage, filteredApplications]);
 
+  const parseNullableNumber = useCallback((value: number | string | null | undefined) => {
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : null;
+    }
+
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? null : parsed;
+    }
+
+    return null;
+  }, []);
+
   const mapApplicationRow = useCallback(
     (item: SupabaseApplicationRow): ApplicationRow => {
-      const scriptMetadata: SupabaseApplicationScriptMetadata =
-        item.script_metadata && typeof item.script_metadata === 'object'
-          ? item.script_metadata
-          : null;
-
-      const rawLength = scriptMetadata?.length ?? null;
-      const normalizedLength = (() => {
-        if (typeof rawLength === 'number') {
-          return rawLength;
-        }
-
-        if (typeof rawLength === 'string' && rawLength.trim() !== '') {
-          const parsed = Number(rawLength);
-          return Number.isNaN(parsed) ? null : parsed;
-        }
-
-        return null;
-      })();
-
-      const rawPrice = scriptMetadata?.price_cents ?? null;
-      const normalizedPrice = (() => {
-        if (typeof rawPrice === 'number') {
-          return rawPrice;
-        }
-
-        if (typeof rawPrice === 'string' && rawPrice.trim() !== '') {
-          const parsed = Number(rawPrice);
-          return Number.isNaN(parsed) ? null : parsed;
-        }
-
-        return null;
-      })();
-
-      const rawListingId =
-        item.listing_id ??
-        item.producer_listing_id ??
-        item.request_id ??
-        item.listing?.id ??
-        null;
-      const resolvedListingId = rawListingId != null ? String(rawListingId) : '';
-
-      const rawScriptId =
-        item.script_id ?? (scriptMetadata?.id != null ? scriptMetadata.id : null);
-      const resolvedScriptId = rawScriptId != null ? String(rawScriptId) : '';
-
-      const scriptTitle =
-        scriptMetadata?.title != null ? String(scriptMetadata.title) : '';
-
-      const listingTitle =
-        item.listing?.title != null ? String(item.listing.title) : '';
+      const resolvedListingId =
+        item.listing_id ?? item.producer_listing_id ?? item.request_id ?? null;
 
       const applicationId =
-        item.application_id != null
-          ? String(item.application_id)
-          : '';
+        item.application_id != null ? String(item.application_id) : '';
 
       const status = item.status != null ? String(item.status) : '';
 
-      const writerEmail =
-        item.writer?.email != null
-          ? String(item.writer.email)
-          : scriptMetadata?.writer_email != null
-          ? String(scriptMetadata.writer_email)
-          : null;
+      const listingTitle =
+        item.listing_title ?? item.request_title ?? '';
 
       const listingSource =
-        item.listing?.source != null ? String(item.listing.source) : null;
+        item.listing_source != null ? String(item.listing_source) : null;
 
-      const conversationId = Array.isArray(item.conversations)
-        ? item.conversations.find((conversation) => conversation?.id)?.id
-        : null;
+      const scriptTitle =
+        item.script_title ?? item.request_title ?? '';
+
+      const writerEmail =
+        item.script_writer_email ?? item.request_writer_email ?? null;
+
+      const conversationId =
+        item.conversation_id != null ? String(item.conversation_id) : null;
 
       return {
         application_id: applicationId,
         status,
         created_at: item.created_at ?? new Date().toISOString(),
-        listing_id: resolvedListingId,
+        listing_id: resolvedListingId != null ? String(resolvedListingId) : '',
         listing_title: listingTitle,
         listing_source: listingSource,
-        script_id: resolvedScriptId,
+        script_id: item.script_id != null ? String(item.script_id) : '',
         script_title: scriptTitle,
         writer_email: writerEmail,
-        length: normalizedLength,
-        price_cents: normalizedPrice,
-        conversation_id:
-          conversationId != null ? String(conversationId) : null,
+        length: parseNullableNumber(item.script_length),
+        price_cents: parseNullableNumber(item.script_price_cents),
+        conversation_id: conversationId,
       };
     },
-    []
+    [parseNullableNumber]
   );
 
   useEffect(() => {
