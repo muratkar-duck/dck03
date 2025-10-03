@@ -31,17 +31,18 @@ const formatDeadline = (deadline: string | null | undefined) => {
 };
 
 const getListingBadge = (listing: VListingUnified) => {
-  const listingType = listing.status ?? listing.source;
+  const source = listing?.source ?? null;
 
-  if (listingType === 'request') {
-    return 'Talep';
+  switch (source) {
+    case 'request':
+      return 'Talep';
+    case 'producer':
+      return 'Yapımcı İlanı';
+    case 'external':
+      return 'Harici Kaynak';
+    default:
+      return null;
   }
-
-  if (listingType === 'producer') {
-    return 'Yapımcı İlanı';
-  }
-
-  return null;
 };
 
 const normalizeListing = (row: any): VListingUnified => {
