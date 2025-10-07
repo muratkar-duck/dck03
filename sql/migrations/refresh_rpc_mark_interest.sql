@@ -1,4 +1,6 @@
--- Run this in the Supabase SQL editor to (re)create the rpc_mark_interest function
+
+drop function if exists public.rpc_mark_interest(uuid);
+
 create or replace function public.rpc_mark_interest(p_script_id uuid)
 
 returns public.interests
@@ -18,7 +20,6 @@ begin
 
   insert into public.interests (producer_id, script_id)
   values (v_producer, p_script_id)
-
   on conflict (producer_id, script_id) do nothing;
 
   select *
