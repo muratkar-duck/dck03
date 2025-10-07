@@ -110,7 +110,10 @@ describe('ProducerApplicationsPage', () => {
     expect(screen.getByText('Test Listing')).toBeInTheDocument();
     expect(mockSupabase.auth.getUser).toHaveBeenCalledTimes(1);
     expect(mockSupabase.rpc).toHaveBeenCalledWith('get_producer_applications', {
-      p_producer_id: 'producer-1',
+      producer_id: 'producer-1',
+      status: null,
+      limit: 11,
+      offset: 0,
     });
   });
 });

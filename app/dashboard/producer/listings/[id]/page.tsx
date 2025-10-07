@@ -125,7 +125,7 @@ export default function ProducerListingDetailPage() {
             status,
             created_at,
             script:scripts ( id, title, genre, length, price_cents, created_at ),
-            writer:users!applications_writer_id_fkey ( id, email )
+            writer:users!writer_id ( id, email )
           `)
           .eq('owner_id', user.id)
           .or(

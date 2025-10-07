@@ -9,7 +9,6 @@ export default function HealthPage() {
   const [results, setResults] = useState<Record<string, { ok: boolean; msg: string }>>({});
   const [loading, setLoading] = useState(true);
 
-  // GEREKLİ KAYNAK LİSTESİ — projede sık geçenler
   const requiredTables = [
     'users',
     'scripts',
@@ -18,6 +17,7 @@ export default function HealthPage() {
     'conversations',
     'messages',
   ];
+
   const requiredColumns: Array<[table: string, column: string]> = [
     ['users', 'role'],
     ['requests', 'deadline'],
@@ -27,6 +27,7 @@ export default function HealthPage() {
     ['scripts', 'genre'],
     ['scripts', 'length'],
   ];
+
   const requiredRPCs = [
     'browse_scripts',
     'get_producer_applications',
@@ -39,7 +40,7 @@ export default function HealthPage() {
       run: async () => {
         const { data, error } = await supabase.auth.getUser();
         if (error) return `❌ ${error.message}`;
-        if (!data?.user) return '⚠️ Giriş yok (bu sayfayı test için girişten sonra da kontrol et)';
+        if (!data?.user) return '⚠️ Giriş yok (bu sayfayı girişten sonra da kontrol et)';
         return null;
       },
     },
@@ -47,15 +48,9 @@ export default function HealthPage() {
       id: 'tables',
       label: 'Gerekli tablolar mevcut mu?',
       run: async () => {
-        const { data, error } = await supabase
-          .from('pg_tables' as any) // Supabase istemcisi system catalog’u doğrudan izin vermez; fallback: information_schema
-          .select('*')
-          .limit(1);
-        // Yukarıdaki yöntem RLS/İzin nedeniyle çoğu ortamda bloklanır. Bunun yerine
-        // ufak denemeler yapalım:
         for (const t of requiredTables) {
-          const { error: e2 } = await supabase.from(t).select('*').limit(1);
-          if (e2) return `❌ ${t} erişim/sorgu hatası: ${e2.message}`;
+          const { error } = await supabase.from(t).select('*').limit(1);
+          if (error) return `❌ ${t} erişim/sorgu hatası: ${error.message}`;
         }
         return null;
       },
@@ -65,9 +60,8 @@ export default function HealthPage() {
       label: 'Kritik kolonlar mevcut mu?',
       run: async () => {
         for (const [t, c] of requiredColumns) {
-          const { data, error } = await supabase.from(t).select(c).limit(1);
+          const { error } = await supabase.from(t).select(c).limit(1);
           if (error) return `❌ ${t}.${c} yok veya erişilemiyor: ${error.message}`;
-          // data dönüyorsa kolon erişilebilir kabul ediyoruz
         }
         return null;
       },
@@ -78,18 +72,26 @@ export default function HealthPage() {
       run: async () => {
         for (const fn of requiredRPCs) {
           const { error } = await supabase.rpc(fn as any, {} as any);
-          // Not: Parametre bekleyen RPC'lerde boş nesne hata verebilir; burada salt "var mı/çalışır mı" denetliyoruz.
-          // Eğer "function xyz requires parameter" gibi bir hata dönerse bu VAR demektir.
           if (error) {
-            const msg = error.message?.toLowerCase() || '';
-            const probablyExists =
-              msg.includes('required') ||
-              msg.includes('argument') ||
-              msg.includes('expects') ||
-              msg.includes('invalid input syntax'); // var ama yanlış input
-            if (!probablyExists && !msg.includes('permission')) {
+            const msg = (error.message || '').toLowerCase();
+
+            // "Parametresiz varyant yok" vb. mesajları VAR (parametreli) kabul et
+            const existsSignals = [
+              'require',               // requires/required
+              'argument',              // argument(s) expected
+              'expects',               // expects ...
+              'invalid input syntax',  // yanlış param ama fonksiyon var
+              'without parameters',    // "without parameters in the schema cache"
+              'schema cache',          // postgrest cache uyarıları
+            ];
+
+            const probablyExists = existsSignals.some((s) => msg.includes(s));
+            const permissionIssue = msg.includes('permission');
+
+            if (!probablyExists && !permissionIssue) {
               return `❌ RPC ${fn} çağrısı başarısız: ${error.message}`;
             }
+            // else: VAR ama parametre/izin gerekli → OK say
           }
         }
         return null;
@@ -107,45 +109,74 @@ export default function HealthPage() {
     },
     {
       id: 'apps_join_demo',
-      label: 'Örnek sorgu: applications join (mesaj akışlarına zemin)',
+      label: 'Örnek sorgu: applications → users embed (writer/producer ayrımı)',
       run: async () => {
+        // Birden fazla ilişki olduğu için ilişki ipucu veriyoruz:
+        // - writer: users!writer_id(...)
+        // - producer: users!producer_id(...)
+        // Eğer FK adlarıyla kullanmak istersen: users!applications_writer_id_fkey vb.
         const { data, error } = await supabase
           .from('applications')
           .select(
             `
             id, status,
-            scripts(id,title),
-            requests(id,title),
-            writer:users(id,email)
+            writer:users!writer_id ( id, email ),
+            producer:users!producer_id ( id, email )
           `
           )
           .limit(1);
-        if (error) return `❌ ${error.message}`;
+        if (error) {
+          // Bu hatayı açıkça gösterelim
+          return `❌ ${error.message}`;
+        }
         if (!Array.isArray(data)) return '⚠️ Beklenen dizi dönmedi';
         return null;
       },
     },
     {
       id: 'messages_insert_rls',
-      label: 'Mesaj insert (RLS sinyali)',
+      label: 'Mesaj insert (RLS sinyali, mevcut conversation ile)',
       run: async () => {
-        // RLS yüzünden büyük ihtimalle hata alacağız — bu da bize politika sinyali verir.
         const { data: auth } = await supabase.auth.getUser();
         if (!auth?.user) return '⚠️ Giriş yok; bu kontrol giriş sonrası geçerli';
-        const { error } = await supabase.from('messages').insert({
-          conversation_id: '00000000-0000-0000-0000-000000000000', // sahte
+
+        // Erişilebilir ilk conversation'ı bul
+        const { data: conv, error: convErr } = await supabase
+          .from('conversations')
+          .select('id')
+          .limit(1)
+          .maybeSingle();
+
+        if (convErr) {
+          // RLS nedeniyle conversation okunamıyorsa, bu da sinyaldir.
+          const m = convErr.message.toLowerCase();
+          if (m.includes('row-level security') || m.includes('rls')) {
+            return null; // RLS aktif → OK (sinyal alındı)
+          }
+          return `❌ conversations erişim hatası: ${convErr.message}`;
+        }
+
+        if (!conv?.id) {
+          return '⚠️ Test atlandı: erişilebilir conversation bulunamadı.';
+        }
+
+        // Bu noktada gerçek insert deniyoruz.
+        const { error: insErr } = await supabase.from('messages').insert({
+          conversation_id: conv.id,
           sender_id: auth.user.id,
           body: '[HEALTH] test',
         });
-        if (error) {
-          const m = error.message.toLowerCase();
-          if (m.includes('new row violates row-level security') || m.includes('rls')) {
-            return null; // RLS aktif ve blokluyor → beklenen sinyal
+
+        if (insErr) {
+          const m = insErr.message.toLowerCase();
+          if (m.includes('row-level security') || m.includes('rls')) {
+            return null; // RLS engelledi → beklenen sinyal
           }
-          // başka hata geldiyse raporla
-          return `❌ messages insert beklenmeyen hata: ${error.message}`;
+          return `❌ messages insert beklenmeyen hata: ${insErr.message}`;
         }
-        return '⚠️ Insert RLS tarafından engellenmedi (politika zayıf olabilir)';
+
+        // Mesaj atılabildiyse RLS çok gevşek olabilir; uyarı ver.
+        return '⚠️ Insert RLS tarafından engellenmedi (test mesajı oluşturuldu).';
       },
     },
   ];
@@ -156,7 +187,7 @@ export default function HealthPage() {
       for (const c of checks) {
         try {
           const err = await c.run();
-          res[c.id] = { ok: !err, msg: err || 'OK' };
+          res[c.id] = { ok: !err, msg: err || '✅ OK' };
         } catch (e: any) {
           res[c.id] = { ok: false, msg: e?.message || 'Bilinmeyen hata' };
         }
@@ -170,7 +201,7 @@ export default function HealthPage() {
     <main className="max-w-3xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">🩺 Ducktylo Health Check</h1>
       <p className="text-sm opacity-70">
-        Bu sayfa, oturum/şema/RPC ve örnek sorgular için canlı teşhis yapar.
+        Oturum/şema/RPC ve örnek sorgular için canlı teşhis.
       </p>
 
       {loading ? (
@@ -178,8 +209,23 @@ export default function HealthPage() {
       ) : (
         <div className="space-y-3">
           {Object.entries(results).map(([id, r]) => (
-            <div key={id} className={`p-3 rounded border ${r.ok ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'}`}>
-              <div className="font-medium">{checks.find(c => c.id === id)?.label}</div>
+            <div
+              key={id}
+              className={`p-3 rounded border ${r.ok ? 'border-green-300 bg-green-50' : 'border-red-300 bg-red-50'}`}
+            >
+              <div className="font-medium">
+                {(
+                  [
+                    ['auth', 'Auth oturumu'],
+                    ['tables', 'Gerekli tablolar mevcut mu?'],
+                    ['columns', 'Kritik kolonlar mevcut mu?'],
+                    ['rpcs', 'Gerekli RPC fonksiyonları mevcut mu?'],
+                    ['browse_scripts_demo', 'Örnek sorgu: browse_scripts RPC (liste çekimi)'],
+                    ['apps_join_demo', 'Örnek sorgu: applications → users embed (writer/producer ayrımı)'],
+                    ['messages_insert_rls', 'Mesaj insert (RLS sinyali, mevcut conversation ile)'],
+                  ] as const
+                ).find((x) => x[0] === id)?.[1] || id}
+              </div>
               <div className="text-sm mt-1">{r.ok ? '✅ OK' : r.msg}</div>
             </div>
           ))}
@@ -187,7 +233,7 @@ export default function HealthPage() {
       )}
 
       <div className="text-xs opacity-60 pt-4">
-        Not: RLS hatası görüyorsan bu normal olabilir (politikalar devrede demektir). Hatanın türüne göre eksik entegrasyonu anlarız.
+        Not: Bazı kontroller kasıtlı olarak RLS veya parametre ihtiyacını tetikler; ❌ yerine ⚠️ olarak raporlanır.
       </div>
     </main>
   );

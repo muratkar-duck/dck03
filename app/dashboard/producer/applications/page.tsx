@@ -61,7 +61,44 @@ export default function ProducerApplicationsPage() {
   const [idFilterType, setIdFilterType] = useState<IdFilter>('all');
   const [idFilterValue, setIdFilterValue] = useState('');
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [hasNextPage, setHasNextPage] = useState(false);
   const supabase = useMemo(getSupabaseClient, []);
+  const filterRows = useCallback(
+    (rows: RpcApplicationRow[]): RpcApplicationRow[] => {
+      const trimmedFilterValue = idFilterValue.trim();
+      if (!trimmedFilterValue) {
+        return rows;
+      }
+
+      const matchesValue = (value: string | null | undefined) =>
+        value != null && String(value).trim() === trimmedFilterValue;
+
+      return rows.filter((item) => {
+        if (idFilterType === 'all') {
+          return (
+            matchesValue(item.listing_id) ||
+            matchesValue(item.producer_listing_id) ||
+            matchesValue(item.request_id)
+          );
+        }
+
+        if (idFilterType === 'listing') {
+          return matchesValue(item.listing_id);
+        }
+
+        if (idFilterType === 'producer_listing') {
+          return matchesValue(item.producer_listing_id);
+        }
+
+        if (idFilterType === 'request') {
+          return matchesValue(item.request_id);
+        }
+
+        return true;
+      });
+    },
+    [idFilterType, idFilterValue]
+  );
 
   const fetchApplications = useCallback(async () => {
     setLoading(true);
@@ -70,6 +107,7 @@ export default function ProducerApplicationsPage() {
     if (!supabase) {
       setFetchError('Supabase istemcisi kullanılamıyor.');
       setRawApplications([]);
+      setHasNextPage(false);
       setLoading(false);
       return;
     }
@@ -80,6 +118,7 @@ export default function ProducerApplicationsPage() {
 
     if (!user) {
       setRawApplications([]);
+      setHasNextPage(false);
       setFetchError('Oturum doğrulanamadı. Lütfen tekrar giriş yapın.');
       setLoading(false);
       return;
@@ -87,83 +126,50 @@ export default function ProducerApplicationsPage() {
 
     setCurrentUserId(user.id);
 
+    const offset = Math.max(0, currentPage - 1) * PAGE_SIZE;
+    const pageSizeWithBuffer = PAGE_SIZE + 1;
+
     const { data, error } = await supabase.rpc('get_producer_applications', {
-      p_producer_id: user.id,
+      producer_id: user.id,
+      status: null,
+      limit: pageSizeWithBuffer,
+      offset,
     });
 
     if (error) {
       console.error('Başvurular alınamadı:', error.message);
       setRawApplications([]);
+      setHasNextPage(false);
       setFetchError(`Supabase hatası: ${error.message}`);
     } else {
       const rows = Array.isArray(data) ? (data as RpcApplicationRow[]) : [];
+      if (rows.length === 0 && currentPage > 1) {
+        setRawApplications([]);
+        setHasNextPage(false);
+        setCurrentPage((page) => Math.max(1, page - 1));
+        setLoading(false);
+        return;
+      }
+      const filteredRows = filterRows(rows);
+      setHasNextPage(filteredRows.length > PAGE_SIZE);
       setRawApplications(rows);
       setFetchError(null);
     }
 
     setLoading(false);
-  }, [supabase]);
+  }, [currentPage, filterRows, supabase]);
 
   useEffect(() => {
     fetchApplications();
   }, [fetchApplications]);
 
-  const trimmedFilterValue = idFilterValue.trim();
-
   const filteredApplications = useMemo(() => {
-    if (!trimmedFilterValue) {
-      return rawApplications;
-    }
-
-    const matchesValue = (value: string | null | undefined) =>
-      value != null && String(value).trim() === trimmedFilterValue;
-
-    return rawApplications.filter((item) => {
-      if (idFilterType === 'all') {
-        return (
-          matchesValue(item.listing_id) ||
-          matchesValue(item.producer_listing_id) ||
-          matchesValue(item.request_id)
-        );
-      }
-
-      if (idFilterType === 'listing') {
-        return matchesValue(item.listing_id);
-      }
-
-      if (idFilterType === 'producer_listing') {
-        return matchesValue(item.producer_listing_id);
-      }
-
-      if (idFilterType === 'request') {
-        return matchesValue(item.request_id);
-      }
-
-      return true;
-    });
-  }, [rawApplications, idFilterType, trimmedFilterValue]);
-
-  const totalCount = filteredApplications.length;
-
-  useEffect(() => {
-    if (loading) {
-      return;
-    }
-
-    const newTotalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
-    if (currentPage > newTotalPages) {
-      setCurrentPage(newTotalPages);
-    }
-  }, [currentPage, loading, totalCount]);
-
-  const paginatedApplications = useMemo(() => {
-    const start = (currentPage - 1) * PAGE_SIZE;
-    const end = start + PAGE_SIZE;
-    return filteredApplications.slice(start, end);
-  }, [currentPage, filteredApplications]);
+    const filtered = filterRows(rawApplications);
+    return filtered.slice(0, PAGE_SIZE);
+  }, [filterRows, rawApplications]);
 
   const applications: ApplicationRow[] = useMemo(() => {
-    return paginatedApplications.map((item) => {
+    return filteredApplications.map((item) => {
       const scriptMetadata =
         item.script_metadata && typeof item.script_metadata === 'object'
           ? (item.script_metadata as ScriptMetadata)
@@ -227,7 +233,7 @@ export default function ProducerApplicationsPage() {
           item.conversation_id != null ? String(item.conversation_id) : null,
       } as ApplicationRow;
     });
-  }, [paginatedApplications]);
+  }, [filteredApplications]);
 
   const resetToFirstPage = () => {
     setCurrentPage(1);
@@ -374,9 +380,8 @@ export default function ProducerApplicationsPage() {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const canGoPrev = currentPage > 1;
-  const canGoNext = currentPage < totalPages;
+  const canGoNext = hasNextPage;
 
   return (
     <AuthGuard allowedRoles={['producer']}>
@@ -567,8 +572,7 @@ export default function ProducerApplicationsPage() {
             </table>
             <div className="flex items-center justify-between border-t border-[#f1e6d7] bg-[#fdf8f1] px-4 py-3 text-sm text-[#5b4632]">
               <span>
-                Toplam {totalCount.toLocaleString('tr-TR')} başvurudan sayfa {currentPage} /{' '}
-                {totalPages.toLocaleString('tr-TR')}
+                Sayfa {currentPage} · Gösterilen {applications.length.toLocaleString('tr-TR')} başvuru
               </span>
               <div className="flex items-center gap-2">
                 <button

@@ -57,7 +57,7 @@ export default function WriterSuggestionHistoryPage() {
             price_cents,
             created_at
           ),
-          producer:users!applications_producer_id_fkey (
+          producer:users!producer_id (
             email
           )
         `
