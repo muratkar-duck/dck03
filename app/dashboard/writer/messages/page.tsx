@@ -187,11 +187,11 @@ export default function WriterMessagesPage() {
                   source,
                   created_at
                 ),
-                producer:users!applications_producer_id_fkey (
+                producer:users!producer_id (
                   id,
                   email
                 ),
-                writer:users!applications_writer_id_fkey (
+                writer:users!writer_id (
                   id,
                   email
                 )
@@ -373,6 +373,48 @@ export default function WriterMessagesPage() {
     [conversations, selectedConversationId]
   );
 
+  const ensureAccessibleConversationId = useCallback(
+    async (candidateId: string): Promise<string | null> => {
+      if (!supabase) {
+        return null;
+      }
+
+      if (conversations.some((conversation) => conversation.id === candidateId)) {
+        return candidateId;
+      }
+
+      let effectiveUserId = userId;
+      if (!effectiveUserId) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        effectiveUserId = user?.id ?? null;
+        if (effectiveUserId && !userId) {
+          setUserId(effectiveUserId);
+        }
+      }
+
+      if (!effectiveUserId) {
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('conversation_id', candidateId)
+        .eq('user_id', effectiveUserId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Konuşma erişimi doğrulanamadı:', error.message);
+        return null;
+      }
+
+      return data?.conversation_id ? String(data.conversation_id) : null;
+    },
+    [conversations, setUserId, supabase, userId]
+  );
+
   const handleSelectConversation = (conversation: ConversationSummary) => {
     setSelectedConversationId(conversation.id);
     if (conversationParam === conversation.id) {
@@ -398,8 +440,17 @@ export default function WriterMessagesPage() {
       return;
     }
 
+    const conversationIdToUse = await ensureAccessibleConversationId(
+      selectedConversationId
+    );
+
+    if (!conversationIdToUse) {
+      console.error('Konuşma doğrulanamadı; mesaj gönderilemedi.');
+      return;
+    }
+
     const { error } = await supabase.from('messages').insert({
-      conversation_id: selectedConversationId,
+      conversation_id: conversationIdToUse,
       sender_id: userId,
       body: text,
     });

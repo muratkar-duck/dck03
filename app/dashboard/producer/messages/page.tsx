@@ -170,7 +170,7 @@ export default function ProducerMessagesPage() {
                   created_at,
                   source
                 ),
-                writer:users!applications_writer_id_fkey!inner (
+                writer:users!writer_id!inner (
                   id,
                   email
                 )
@@ -305,6 +305,48 @@ export default function ProducerMessagesPage() {
       setUrlConversation,
       supabase,
     ]
+  );
+
+  const ensureAccessibleConversationId = useCallback(
+    async (candidateId: string): Promise<string | null> => {
+      if (!supabase) {
+        return null;
+      }
+
+      if (conversations.some((conversation) => conversation.id === candidateId)) {
+        return candidateId;
+      }
+
+      let actorId = currentUserId;
+      if (!actorId) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        actorId = user?.id ?? null;
+        if (actorId) {
+          setCurrentUserId(actorId);
+        }
+      }
+
+      if (!actorId) {
+        return null;
+      }
+
+      const { data, error } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('conversation_id', candidateId)
+        .eq('user_id', actorId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Konuşma erişimi doğrulanamadı:', error.message);
+        return null;
+      }
+
+      return data?.conversation_id ? String(data.conversation_id) : null;
+    },
+    [conversations, currentUserId, setCurrentUserId, supabase]
   );
 
   useEffect(() => {
@@ -496,8 +538,17 @@ export default function ProducerMessagesPage() {
 
       if (!senderId) return;
 
+      const conversationIdToUse = await ensureAccessibleConversationId(
+        selectedConversationId
+      );
+
+      if (!conversationIdToUse) {
+        console.error('Konuşma doğrulanamadı; mesaj gönderilmedi.');
+        return;
+      }
+
       const { error } = await supabase.from('messages').insert({
-        conversation_id: selectedConversationId,
+        conversation_id: conversationIdToUse,
         sender_id: senderId,
         body: text,
       });
@@ -511,7 +562,14 @@ export default function ProducerMessagesPage() {
     } finally {
       setSending(false);
     }
-  }, [currentUserId, input, selectedConversationId, sending, supabase]);
+  }, [
+    currentUserId,
+    ensureAccessibleConversationId,
+    input,
+    selectedConversationId,
+    sending,
+    supabase,
+  ]);
 
   const selectedConversation = useMemo(
     () =>

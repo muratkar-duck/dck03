@@ -43,7 +43,10 @@ export default function ProducerApplicationsPage() {
 
     // Join'li veriyi RPC ile çekiyoruz
     const { data, error } = await supabase.rpc('get_producer_applications', {
-      p_producer_id: user.id,
+      producer_id: user.id,
+      status: null,
+      limit: 11,
+      offset: 0,
     });
 
     if (error) {
