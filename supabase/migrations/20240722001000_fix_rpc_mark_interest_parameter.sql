@@ -1,6 +1,5 @@
--- Run this in the Supabase SQL editor to (re)create the rpc_mark_interest function
+-- Ensure the rpc_mark_interest function uses an unambiguous parameter name
 create or replace function public.rpc_mark_interest(p_script_id uuid)
-
 returns public.interests
 language plpgsql
 security definer
@@ -18,7 +17,6 @@ begin
 
   insert into public.interests (producer_id, script_id)
   values (v_producer, p_script_id)
-
   on conflict (producer_id, script_id) do nothing;
 
   select *
@@ -27,12 +25,13 @@ begin
   where producer_id = v_producer
     and script_id = p_script_id;
 
-
   return v_interest;
 end;
 $$;
 
+-- Make the function available to clients
 grant execute on function public.rpc_mark_interest(uuid) to authenticated;
 grant execute on function public.rpc_mark_interest(uuid) to service_role;
 
+-- Ask PostgREST to reload the schema cache so the function becomes immediately available
 notify pgrst, 'reload schema';
