@@ -1,6 +1,5 @@
-drop function if exists public.rpc_mark_interest(uuid);
-
-create or replace function public.rpc_mark_interest(p_script_id uuid)
+-- Ensure the rpc_mark_interest function exists for producers
+create or replace function public.rpc_mark_interest(script_id uuid)
 returns public.interests
 language plpgsql
 security definer
@@ -17,14 +16,14 @@ begin
   end if;
 
   insert into public.interests (producer_id, script_id)
-  values (v_producer, p_script_id)
+  values (v_producer, rpc_mark_interest.script_id)
   on conflict (producer_id, script_id) do nothing;
 
   select *
   into v_interest
   from public.interests
   where producer_id = v_producer
-    and script_id = p_script_id;
+    and script_id = rpc_mark_interest.script_id;
 
   return v_interest;
 end;

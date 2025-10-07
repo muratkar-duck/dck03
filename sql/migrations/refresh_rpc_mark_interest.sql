@@ -1,6 +1,8 @@
+
 drop function if exists public.rpc_mark_interest(uuid);
 
 create or replace function public.rpc_mark_interest(p_script_id uuid)
+
 returns public.interests
 language plpgsql
 security definer
@@ -25,6 +27,7 @@ begin
   from public.interests
   where producer_id = v_producer
     and script_id = p_script_id;
+
 
   return v_interest;
 end;

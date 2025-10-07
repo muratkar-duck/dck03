@@ -1,5 +1,4 @@
-drop function if exists public.rpc_mark_interest(uuid);
-
+-- Ensure the rpc_mark_interest function uses an unambiguous parameter name
 create or replace function public.rpc_mark_interest(p_script_id uuid)
 returns public.interests
 language plpgsql
