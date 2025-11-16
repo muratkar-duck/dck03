@@ -308,10 +308,11 @@ export default function BrowseScriptsPage() {
 
         const alreadyInterested = interestedScriptIdsRef.current.has(script.id);
 
+        // 🔥 BURASI GÜNCEL: p_script_id ile çağırıyoruz
         const { error: markInterestError } = await supabase.rpc(
           'rpc_mark_interest',
           {
-            script_id: script.id,
+            p_script_id: script.id,
           }
         );
 
