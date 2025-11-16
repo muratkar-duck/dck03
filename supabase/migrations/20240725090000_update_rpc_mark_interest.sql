@@ -1,4 +1,7 @@
--- Align rpc_mark_interest with current frontend usage
+-- Eski fonksiyonu kaldır
+drop function if exists public.rpc_mark_interest(uuid);
+
+-- Yeni fonksiyonu oluştur
 create or replace function public.rpc_mark_interest(script_id uuid)
 returns void
 language plpgsql
@@ -11,4 +14,5 @@ begin
 end;
 $$;
 
+-- Yetkiler
 grant execute on function public.rpc_mark_interest(uuid) to anon, authenticated;
