@@ -8,7 +8,7 @@ export default function PlansPage() {
   const activePlanId = selection?.planId;
 
   return (
-    <div className="space-y-12 max-w-5xl mx-auto">
+    <div className="max-w-6xl mx-auto space-y-12 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-10">
       <section className="space-y-6">
         <div className="space-y-2 text-center">
           <p className="text-sm uppercase tracking-wide text-[#7a5c36]">
@@ -30,7 +30,7 @@ export default function PlansPage() {
         {loading && isAuthenticated ? (
           <p className="text-center text-[#7a5c36]">Plan bilgilerin yükleniyor...</p>
         ) : (
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 gap-6">
             {plans.map((plan) => {
               const isActive = isAuthenticated && plan.id === activePlanId;
 
@@ -72,22 +72,24 @@ export default function PlansPage() {
         </div>
       </section>
 
-      <section className="card space-y-4">
-        <div className="space-y-2">
-          <p className="text-sm uppercase tracking-wide text-[#7a5c36]">
-            🎬 Yapımcılar / Endüstri Üyeliği
-          </p>
-          <p className="text-[#7a5c36]">
-            Yapımcılar ve yapım şirketleri için üyelikler proje bazlı ve özel koşullarla şekillenir.
-          </p>
-          <p className="text-[#7a5c36]">
-            Endüstri üyesi misiniz? İhtiyaçlarınızı konuşmak için bizimle iletişime geçin.
-          </p>
-        </div>
-        <div>
-          <Link href="/contact" className="btn btn-primary w-full md:w-auto">
-            Endüstri üyesi misiniz? İletişime geçin
-          </Link>
+      <section>
+        <div className="card h-full space-y-4">
+          <div className="space-y-2">
+            <p className="text-sm uppercase tracking-wide text-[#7a5c36]">
+              🎬 Yapımcılar / Endüstri Üyeliği
+            </p>
+            <p className="text-[#7a5c36]">
+              Yapımcılar ve yapım şirketleri için üyelikler proje bazlı ve özel koşullarla şekillenir.
+            </p>
+            <p className="text-[#7a5c36]">
+              Endüstri üyesi misiniz? İhtiyaçlarınızı konuşmak için bizimle iletişime geçin.
+            </p>
+          </div>
+          <div>
+            <Link href="/contact" className="btn btn-primary w-full">
+              Endüstri üyesi misiniz? İletişime geçin
+            </Link>
+          </div>
         </div>
       </section>
     </div>
