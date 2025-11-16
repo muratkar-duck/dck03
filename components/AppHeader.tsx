@@ -37,8 +37,16 @@ const getMessagesPath = (role: Role | null | undefined) => {
   return '/dashboard/messages';
 };
 
+const getBrowsePath = (role: Role | null | undefined) => {
+  if (role === 'producer') {
+    return '/dashboard/producer/browse';
+  }
+
+  return '/browse';
+};
+
 const createAppLinks = (role: Role | null | undefined): NavLink[] => [
-  { href: '/browse', label: 'Keşfet' },
+  { href: getBrowsePath(role), label: 'Keşfet' },
   { href: getDashboardPath(role), label: 'Panel' },
   { href: getMessagesPath(role), label: 'Mesajlar' },
 ];

@@ -50,8 +50,8 @@ describe('AppHeader navigation links', () => {
 
     const expectedLinks = [
       { label: 'Ana Sayfa', href: '/' },
-      { label: 'Hakkımızda', href: '/about' },
-      { label: 'Nasıl Çalışır', href: '/how-it-works' },
+      { label: 'Hakkımızda', href: '/#about' },
+      { label: 'Nasıl Çalışır', href: '/#how-it-works' },
       { label: 'Planlar', href: '/plans' },
     ];
 
@@ -100,7 +100,7 @@ describe('AppHeader navigation links', () => {
     render(<AppHeader />);
 
     const expectedLinks = [
-      { label: 'Keşfet', href: '/browse' },
+      { label: 'Keşfet', href: '/dashboard/producer/browse' },
       { label: 'Panel', href: '/dashboard/producer' },
       { label: 'Mesajlar', href: '/dashboard/producer/messages' },
     ];
