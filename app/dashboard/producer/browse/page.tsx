@@ -273,7 +273,14 @@ export default function BrowseScriptsPage() {
   };
 
   const handleInterest = useCallback(
-    async (script: Script) => {
+    async (scriptId: string) => {
+      const script = scripts.find((item) => item.id === scriptId);
+
+      if (!script) {
+        showToast('error', 'Senaryo bilgisine ulaşılamadı.');
+        return;
+      }
+
       setPendingInterestId(script.id);
       try {
         if (!supabase) {
@@ -349,7 +356,7 @@ export default function BrowseScriptsPage() {
         setPendingInterestId(null);
       }
     },
-    [notifyWriterOfInterest, showToast, supabase]
+    [notifyWriterOfInterest, scripts, showToast, supabase]
   );
 
   return (
@@ -542,7 +549,7 @@ export default function BrowseScriptsPage() {
                   >
                     <button
                       className="btn btn-primary"
-                      onClick={() => handleInterest(s)}
+                      onClick={() => handleInterest(s.id)}
                       disabled={pendingInterestId === s.id}
                       aria-busy={pendingInterestId === s.id}
                     >
